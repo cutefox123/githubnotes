@@ -9,20 +9,26 @@
    -------------------------------------------------------------------------- */
 
 body {
-  /* 暖纸桌面：一层主光 + 一层环境光 + 一层底部回弹的暖影 */
   background-color: #ece1c6;
+  font-optical-sizing: auto;
+  font-synthesis-weight: none;
+}
+
+/* 暖纸桌面：一层静态渐变垫底（固定层，不随滚动重绘） */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
   background-image:
     radial-gradient(1180px 760px at 86% -18%, rgba(255, 250, 232, .66), transparent 60%),
     radial-gradient(880px 600px at 0% 2%, rgba(255, 236, 194, .58), transparent 58%),
     radial-gradient(900px 620px at 54% 114%, rgba(176, 130, 58, .30), transparent 70%),
     linear-gradient(168deg, #f8efd5, #ecdfbe 42%, #d9c7a2);
-  background-attachment: fixed;
-  font-optical-sizing: auto;
-  font-synthesis-weight: none;
 }
-
-[data-theme="dark"] body {
-  background-color: #17130d;
+[data-theme="dark"] body { background-color: #17130d; }
+[data-theme="dark"] body::before {
   background-image:
     radial-gradient(1180px 780px at 88% -16%, rgba(224, 166, 87, .12), transparent 62%),
     radial-gradient(900px 620px at 2% 0%, rgba(255, 220, 160, .05), transparent 60%),
@@ -122,170 +128,11 @@ kbd {
 ::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--accent) 62%, transparent); }
 
 /* --------------------------------------------------------------------------
-   2. 三维光景画布
+   2. 内容层级
    -------------------------------------------------------------------------- */
 
-#scene {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 1.1s var(--ease);
-}
-#scene.is-ready { opacity: 1; }
-[data-theme="dark"] #scene { opacity: 1; mix-blend-mode: screen; }
-
-/* 没有 WebGL / 关掉动效时，用纯 CSS 光斑顶上，画面不空 */
-.aurora {
-  position: fixed;
-  inset: -10%;
-  z-index: 0;
-  pointer-events: none;
-  opacity: .9;
-  background:
-    radial-gradient(closest-side at 22% 26%, color-mix(in srgb, var(--accent-2) 40%, transparent), transparent 70%),
-    radial-gradient(closest-side at 76% 18%, color-mix(in srgb, #fff3cf 70%, transparent), transparent 72%),
-    radial-gradient(closest-side at 62% 88%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 74%);
-  filter: blur(46px) saturate(1.05);
-  animation: auroraDrift 26s var(--ease) infinite alternate;
-}
-[data-theme="dark"] .aurora { opacity: .5; }
-#scene.is-ready ~ .aurora,
-body.has-scene .aurora { opacity: .32; }
-[data-theme="dark"] body.has-scene .aurora { opacity: .22; }
-
-@keyframes auroraDrift {
-  0%   { transform: translate3d(0, 0, 0) scale(1); }
-  50%  { transform: translate3d(2.4%, -1.8%, 0) scale(1.06); }
-  100% { transform: translate3d(-2%, 2.2%, 0) scale(1.02); }
-}
-
-/* 光标聚光：亮部跟手，暗部反向，形成「有光源在动」的错觉 */
-#glow {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity .8s var(--ease);
-  background:
-    radial-gradient(520px 520px at var(--gx, 50%) var(--gy, 34%),
-      color-mix(in srgb, #fff6dc 62%, transparent), transparent 62%);
-  mix-blend-mode: soft-light;
-}
-body.is-pointer #glow { opacity: 1; }
-
-#shade {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity .9s var(--ease);
-  background:
-    radial-gradient(680px 680px at calc(100% - var(--gx, 50%)) calc(100% - var(--gy, 34%)),
-      color-mix(in srgb, #8a6a34 22%, transparent), transparent 66%);
-  mix-blend-mode: multiply;
-}
-body.is-pointer #shade { opacity: .55; }
-[data-theme="dark"] #shade { display: none; }
-
-/* 内容压在画布之上 */
 main,
 .site-footer { position: relative; z-index: 1; }
-
-/* 卷轴进度条 */
-.scroll-progress {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 70;
-  height: 2px;
-  width: 100%;
-  transform-origin: 0 50%;
-  transform: scaleX(0);
-  background: linear-gradient(90deg,
-    color-mix(in srgb, var(--accent) 40%, transparent),
-    var(--accent-2) 46%,
-    var(--accent-deep));
-  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 55%, transparent);
-  opacity: 0;
-  transition: opacity .4s var(--ease);
-  pointer-events: none;
-}
-.scroll-progress.is-on { opacity: 1; }
-
-/* --------------------------------------------------------------------------
-   3. 本子的立体与反光
-   -------------------------------------------------------------------------- */
-
-.book {
-  transform-style: preserve-3d;
-  transition: transform .5s var(--ease), box-shadow .4s var(--ease);
-  will-change: transform;
-}
-
-/* 悬停时整本跟着光标微微侧转 —— 桌面端才开，手机上文字不能晃 */
-@media (min-width: 1024px) and (hover: hover) {
-  main { perspective: 2400px; perspective-origin: 50% 20%; }
-  .book.is-tilting {
-    animation: none;
-    transform: rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg)) translateZ(0);
-    box-shadow:
-      var(--hi),
-      0 0 0 1px rgba(76, 58, 26, .10),
-      0 2px 4px rgba(76, 58, 26, .07),
-      calc(var(--ty, 0deg) * -1.2) calc(var(--tx, 0deg) * 1.6 + 30px) 60px -42px rgba(76, 58, 26, .62);
-  }
-}
-
-.book {
-  background:
-    linear-gradient(180deg, #fefcee 0%, #fcf5df 52%, #f8ebcd 100%);
-}
-[data-theme="dark"] .book {
-  background: linear-gradient(180deg, #2c2413, #251f13 62%, #201a11);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 236, 200, .07),
-    0 0 0 1px rgba(255, 236, 200, .07),
-    0 2px 6px rgba(0, 0, 0, .5),
-    0 40px 70px -44px #000;
-}
-
-.month-bar {
-  background: linear-gradient(180deg,
-    color-mix(in srgb, #fcf6e4 86%, transparent) 60%,
-    color-mix(in srgb, #fcf6e4 46%, transparent));
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-bottom-color: color-mix(in srgb, var(--accent) 16%, transparent);
-}
-[data-theme="dark"] .month-bar {
-  background: linear-gradient(180deg,
-    color-mix(in srgb, #251f13 88%, transparent) 60%,
-    color-mix(in srgb, #251f13 40%, transparent));
-}
-
-/* 掠过纸面的高光 */
-.book > .book-body::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  opacity: 0;
-  background: radial-gradient(560px 420px at var(--bx, 50%) var(--by, 0%),
-    rgba(255, 255, 255, .55), transparent 62%);
-  mix-blend-mode: soft-light;
-  transition: opacity .45s var(--ease);
-}
-.book-body { position: relative; }
-.book.is-tilting > .book-body::after { opacity: .85; }
-[data-theme="dark"] .book.is-tilting > .book-body::after { opacity: .3; }
 
 /* --------------------------------------------------------------------------
    4. 入场与滚动动效
@@ -386,13 +233,10 @@ main,
 .icon-btn .moon { transition: transform .5s var(--spring), opacity .3s var(--ease); }
 .icon-btn.is-dark .sun { transform: rotate(90deg) scale(.5); opacity: 0; }
 
-/* 顶栏滚动态：加一层雾面 */
-.appbar.is-stuck {
+/* 顶栏雾面常开（滚动时切换状态会闪一下，所以不做成开关） */
+.appbar {
   backdrop-filter: saturate(1.15) blur(10px);
   -webkit-backdrop-filter: saturate(1.15) blur(10px);
-  background: linear-gradient(180deg,
-    color-mix(in srgb, var(--paper) 88%, transparent),
-    color-mix(in srgb, var(--paper-2) 82%, transparent));
 }
 
 /* --------------------------------------------------------------------------
@@ -631,13 +475,6 @@ main,
   border-radius: 8px;
 }
 
-/* 页间切换（Chrome 126+）淡入淡出 */
-@view-transition { navigation: auto; }
-::view-transition-old(root) { animation: vtOut .22s var(--ease) both; }
-::view-transition-new(root) { animation: vtIn .32s var(--ease) both; }
-@keyframes vtOut { to { opacity: 0; transform: scale(.995); } }
-@keyframes vtIn { from { opacity: 0; transform: scale(1.004); } }
-
 /* --------------------------------------------------------------------------
    7. 多端适配
    -------------------------------------------------------------------------- */
@@ -690,8 +527,6 @@ main,
   .prose > p:first-of-type::first-letter { font-size: 2.2em; }
   .entry { --d: 0ms !important; }
   .site-footer { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
-  /* 手机不做 3D 倾斜，滚动手感优先 */
-  .book.is-tilting { transform: none !important; }
 }
 
 @media (max-width: 420px) {
@@ -730,7 +565,6 @@ main,
 
 /* 触屏设备：去掉所有悬停态，避免点完「粘住」 */
 @media (hover: none) {
-  #glow, #shade { display: none; }
   .entry:hover { transform: none; }
   .card:hover { transform: none; }
   .cal-cell:hover { transform: none; }
@@ -739,16 +573,13 @@ main,
 
 /* 无障碍：关掉动效 */
 @media (prefers-reduced-motion: reduce) {
-  #scene, .aurora, #glow, #shade { display: none; }
   .reveal { opacity: 1 !important; transform: none !important; }
   .lock-seal, .lock-card::before, .cal-cell::after { animation: none !important; }
-  .book.is-tilting { transform: none !important; }
-  @view-transition { navigation: none; }
 }
 
 /* 打印：只留字 */
 @media print {
-  #scene, .aurora, #glow, #shade, .appbar, .site-footer, .fab, .scroll-progress { display: none !important; }
+  .appbar, .site-footer, .fab, .scroll-progress { display: none !important; }
   body { background: #fff; }
   .book { box-shadow: none; }
 }

@@ -77,11 +77,9 @@ about.html                 关于页（内容是公开的）
 
 assets/lock.json           密码包裹的内容密钥（唯一需要保密的加密文件）
 assets/css/blog.css        样式（暖纸手账设计系统：光影、装订、按钮、卡片）
-assets/css/fx.css          光效层（三维光影、滚动动效、多端适配，叠在 blog.css 之上）
+assets/css/fx.css          轻动效层（滚动揭示、触感、多端适配，叠在 blog.css 之上）
 assets/fonts/              Inter / JetBrains Mono 的拉丁子集（英文数字不再难看）
-assets/js/fx.js            交互层：聚光跟随、滚动揭示、水波纹、数字滚动
-assets/js/scene.js         three.js 光景（悬浮纸片 + 跟手的光 + 真实投影 + 尘）
-assets/vendor/three.module.min.js   three r160（按需加载，失败自动退回 CSS 光斑）
+assets/js/fx.js            交互层：滚动揭示、水波纹、数字滚动、进度条
 assets/js/crypto.js        PBKDF2 / AES-GCM 封装
 assets/js/vault.js         解锁、会话、加解密内容
 assets/js/data.js          取密文 → 解密 → 缓存
@@ -107,9 +105,8 @@ tools/gen-icons.mjs        生成站点图标
 ## 视觉与动效
 - **配色**：淡黄纸面（`#ece1c6` 桌面 / `#fffdef` 内页 / 蜜色 `#c0802f` 点缀），深色是暖褐夜灯。
 - **字体**：英文与数字走 Inter、等宽走 JetBrains Mono（各自 48KB 本地托管），汉字用系统黑体。
-- **光影**：three.js 场景里有一组悬浮的纸片、跟随光标的点光源、地面投影和浮尘；
-  页面本身还有一层「亮部跟手 / 暗部反向」的聚光。全部动效尊重 `prefers-reduced-motion`，
-  WebGL 不可用时退回纯 CSS 光斑，低端手机自动降载（减少数量、关阴影）。
+- **动效**：滚动揭示、水波纹、数字滚动、锁屏扫光等轻量效果；背景是一层静态暖光渐变。
+  全部尊重 `prefers-reduced-motion`；为了滚动稳定，不使用 3D 场景、鼠标聚光和全屏混合模式。
 
 ## 本地改样式 / 调试
 
