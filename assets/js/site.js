@@ -22,7 +22,7 @@ export function applyTheme(t) {
   const theme = t || currentTheme();
   document.documentElement.setAttribute('data-theme', theme);
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', theme === 'dark' ? '#0a0c0f' : '#ffffff');
+  if (meta) meta.setAttribute('content', theme === 'dark' ? '#121110' : '#e6e2d9');
   $$('[data-theme-toggle]').forEach((btn) => {
     btn.setAttribute('aria-label', theme === 'dark' ? '切换到浅色' : '切换到深色');
     btn.classList.toggle('is-dark', theme === 'dark');
@@ -104,6 +104,7 @@ export function daysAgo(str) {
 function lockMarkup() {
   return `
   <div class="lock-card">
+    <div class="lock-seal" aria-hidden="true">拾</div>
     <p class="lock-kicker">${SITE.titleEn}</p>
     <h1 class="lock-title">${SITE.title}</h1>
     <p class="lock-sub">这里记着一些私人的日子，<br>需要密码才能翻开。</p>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>写一篇 · 拾光</title>
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#e6e2d9">
 <meta name="color-scheme" content="light dark">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icons/favicon-32.png" sizes="32x32">
@@ -49,21 +49,24 @@
 
     <!-- 连接 GitHub -->
     <section class="token-box" id="tokenGate" hidden>
-      <h2>先连上你的 GitHub（只做一次）</h2>
-      <p class="hint">文章要保存到你的仓库，所以需要一个只有这台设备知道的「钥匙」。它不会出现在网页里，只存在你本机浏览器。</p>
-      <ol>
-        <li>打开 <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">GitHub 令牌页面</a>（可能需要先登录）。</li>
-        <li>Token name 随便填，例如 <code>拾光写作</code>；Expiration 选 <code>No expiration</code> 或一年。</li>
-        <li>Repository access 选 <code>Only select repositories</code>，勾上 <code>githubnotes</code>。</li>
-        <li>Permissions → Repository permissions → <code>Contents</code> 设为 <strong>Read and write</strong>。</li>
-        <li>点最下面 Generate token，复制以 <code>github_pat_</code> 开头的那串，粘贴到下面。</li>
-      </ol>
-      <div class="field">
+      <div class="token-steps">
+        <h2>先连上你的 GitHub（只做一次）</h2>
+        <p class="hint">文章要保存到你的仓库，所以需要一个只有这台设备知道的「钥匙」。它不会出现在网页里，只存在你本机浏览器。</p>
+        <ol>
+          <li>打开 <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">GitHub 令牌页面</a>（可能需要先登录）。</li>
+          <li>Token name 随便填，例如 <code>拾光写作</code>；Expiration 选 <code>No expiration</code> 或一年。</li>
+          <li>Repository access 选 <code>Only select repositories</code>，勾上 <code>githubnotes</code>。</li>
+          <li>Permissions → Repository permissions → <code>Contents</code> 设为 <strong>Read and write</strong>。</li>
+          <li>点最下面 Generate token，复制以 <code>github_pat_</code> 开头的那串，粘贴到右边。</li>
+        </ol>
+      </div>
+      <div class="token-side">
         <label for="tokenInput">访问令牌</label>
         <input class="input" id="tokenInput" type="password" placeholder="github_pat_..." autocomplete="off" spellcheck="false">
+        <button class="btn" id="tokenSave" type="button">连接</button>
+        <p class="progress" id="tokenMsg"></p>
+        <p class="hint" style="margin:0">令牌只存在这台设备的浏览器里，换设备要重新连一次。</p>
       </div>
-      <button class="btn" id="tokenSave" type="button">连接</button>
-      <p class="progress" id="tokenMsg"></p>
     </section>
 
     <!-- 编辑器 -->

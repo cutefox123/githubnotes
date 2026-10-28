@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>正在翻开 · 拾光</title>
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#e6e2d9">
 <meta name="color-scheme" content="light dark">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icons/favicon-32.png" sizes="32x32">
@@ -45,17 +45,23 @@
       <img id="coverImg" alt="">
     </div>
 
-    <div class="prose" id="postBody"></div>
+    <div class="post-grid">
+      <div class="post-main">
+        <div class="prose" id="postBody"></div>
 
-    <div class="post-end" id="postEnd" hidden>
-      <span class="post-end-sign" id="postSign"></span>
-      <div class="post-actions">
-        <a class="ghost-btn" id="editBtn" href="./write.html">改一下</a>
-        <a class="ghost-btn" href="./index.html">回到日常</a>
+        <div class="post-end" id="postEnd" hidden>
+          <span class="post-end-sign" id="postSign"></span>
+          <div class="post-actions">
+            <a class="ghost-btn" id="editBtn" href="./write.html">改一下</a>
+            <a class="ghost-btn" href="./index.html">回到日常</a>
+          </div>
+        </div>
+
+        <nav class="post-nav" id="postNav" hidden></nav>
       </div>
-    </div>
 
-    <nav class="post-nav" id="postNav" hidden></nav>
+      <aside class="post-side" id="postSide"></aside>
+    </div>
   </article>
 </main>
 

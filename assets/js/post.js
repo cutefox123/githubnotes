@@ -1,6 +1,6 @@
 /* 单篇文章页 */
 
-import { gate, applyTheme, bindThemeToggles, bindLockButton, toast, $, fmtDateLong, parseDate } from './site.js';
+import { gate, applyTheme, bindThemeToggles, bindLockButton, toast, $, fmtDate, fmtDateLong } from './site.js';
 import { loadPost, loadIndex, loadImage, readingTime } from './data.js';
 import { renderMarkdown } from './md.js';
 import { SITE } from './config.js';
@@ -60,10 +60,10 @@ async function render(post, index) {
 
   const meta = [];
   meta.push('<span>' + fmtDateLong(post.date) + '</span>');
-  if (post.weather) meta.push('<i class="dot"></i><span>' + escapeHtml(post.weather) + '</span>');
-  if (post.place) meta.push('<i class="dot"></i><span>' + escapeHtml(post.place) + '</span>');
+  if (post.weather) meta.push('<span>' + escapeHtml(post.weather) + '</span>');
+  if (post.place) meta.push('<span>' + escapeHtml(post.place) + '</span>');
   if (post.mood) meta.push('<span class="pill">' + escapeHtml(post.mood) + '</span>');
-  meta.push('<i class="dot"></i><span>' + readingTime(post.body) + ' 分钟</span>');
+  meta.push('<span>' + readingTime(post.body) + ' 分钟</span>');
   $('#postMeta').innerHTML = meta.join('');
 
   const bodyEl = $('#postBody');
@@ -97,7 +97,6 @@ async function render(post, index) {
 
   // 上下篇
   if (index && Array.isArray(index.posts) && index.posts.length > 1) {
-    const others = index.posts.filter((p) => p.id !== post.id);
     const pos = index.posts.findIndex((p) => p.id === post.id);
     const newer = pos > 0 ? index.posts[pos - 1] : null;
     const older = pos >= 0 && pos < index.posts.length - 1 ? index.posts[pos + 1] : null;
@@ -112,6 +111,58 @@ async function render(post, index) {
     ].join('');
     nav.hidden = false;
   }
+
+  renderSide(post, index);
+}
+
+/* ---------------- 页边注 ---------------- */
+
+function renderSide(post, index) {
+  const side = $('#postSide');
+  if (!side) return;
+
+  const blocks = [];
+
+  const tags = post.tags || [];
+  if (tags.length) {
+    blocks.push(
+      '<div class="side-block"><h2 class="side-title">标签</h2><div class="side-tags">' +
+      tags.map((t) => `<a href="./index.html?tag=${encodeURIComponent(t)}">${escapeHtml(t)}</a>`).join('') +
+      '</div></div>'
+    );
+  }
+
+  const kv = [];
+  if (post.date) kv.push(['日期', fmtDateLong(post.date)]);
+  if (post.weather) kv.push(['天气', post.weather]);
+  if (post.mood) kv.push(['心情', post.mood]);
+  if (post.place) kv.push(['地点', post.place]);
+  const chars = (post.body || '').replace(/\s/g, '').length;
+  if (chars) kv.push(['字数', chars + ' 字']);
+  kv.push(['读完', readingTime(post.body) + ' 分钟']);
+
+  blocks.push(
+    '<div class="side-block"><h2 class="side-title">这一篇</h2><ul class="side-kv">' +
+    kv.map(([k, v]) => `<li><span>${escapeHtml(k)}</span><b>${escapeHtml(v)}</b></li>`).join('') +
+    '</ul></div>'
+  );
+
+  if (index && Array.isArray(index.posts) && index.posts.length > 1) {
+    const recents = index.posts.filter((p) => p.id !== post.id).slice(0, 4);
+    if (recents.length) {
+      blocks.push(
+        '<div class="side-block"><h2 class="side-title">最近也写了</h2><ul class="side-list">' +
+        recents.map((p) => (
+          `<li><a href="./post.html?id=${encodeURIComponent(p.id)}">` +
+          `<span class="t">${escapeHtml(p.title || '无题')}</span>` +
+          `<span class="d">${fmtDate(p.date)}</span></a></li>`
+        )).join('') +
+        '</ul></div>'
+      );
+    }
+  }
+
+  side.innerHTML = blocks.join('');
 }
 
 boot();

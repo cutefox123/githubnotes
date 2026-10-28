@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>拾光 · 日常记录</title>
 <meta name="description" content="一个私人的日常记录本：天气、食物、路上看见的东西，和一些没什么用但很喜欢的瞬间。">
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#e6e2d9">
 <meta name="color-scheme" content="light dark">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icons/favicon-32.png" sizes="32x32">
@@ -36,66 +36,98 @@
 </header>
 
 <main>
-  <section class="wrap masthead">
-    <div>
-      <p class="eyebrow" id="heroKicker">daily gleanings · since 2026</p>
-      <h1 class="masthead-title">日常</h1>
-      <p class="masthead-sub" id="heroSub">把日子过成可以翻的样子。</p>
-    </div>
-    <dl class="stats" id="heroSide">
-      <div><dt>篇数</dt><dd>—</dd></div>
-      <div><dt>最近</dt><dd>—</dd></div>
-      <div><dt>存放</dt><dd>密文</dd></div>
-    </dl>
-  </section>
-
   <div class="wrap">
-    <div class="toolbar">
-      <div class="chips" id="chips"></div>
-      <div class="search">
-        <input id="q" type="search" placeholder="搜索标题、地点、标签" aria-label="搜索文章" autocomplete="off">
+    <div class="paper">
+
+      <section class="masthead">
+        <div>
+          <p class="eyebrow" id="heroKicker">daily gleanings · since 2026</p>
+          <h1 class="masthead-title">日常</h1>
+          <p class="masthead-sub" id="heroSub">把日子过成可以翻的样子。</p>
+        </div>
+        <dl class="stats" id="heroSide">
+          <div><dt>篇数</dt><dd>—</dd></div>
+          <div><dt>最近</dt><dd>—</dd></div>
+          <div><dt>存放</dt><dd>密文</dd></div>
+        </dl>
+      </section>
+
+      <section class="featured" id="featured" hidden>
+        <a class="feat" id="featLink" href="#">
+          <div class="feat-photo" id="featPhoto">
+            <img id="featImg" alt="">
+            <span class="feat-date" id="featDate"></span>
+            <span class="feat-stamp">最新</span>
+          </div>
+          <div class="feat-body">
+            <div class="feat-meta" id="featMeta"></div>
+            <h2 class="feat-title" id="featTitle"></h2>
+            <p class="feat-excerpt" id="featExcerpt"></p>
+            <div class="feat-foot">
+              <span class="feat-tags" id="featTags"></span>
+              <span class="feat-more">读这篇 →</span>
+            </div>
+          </div>
+        </a>
+      </section>
+
+      <div class="toolbar">
+        <div class="chips" id="chips"></div>
+        <div class="search">
+          <input id="q" type="search" placeholder="搜索标题、地点、标签" aria-label="搜索文章" autocomplete="off">
+        </div>
       </div>
+
+      <div class="layout">
+        <div class="stream" id="grid" aria-live="polite">
+          <div class="row skel">
+            <div class="row-thumb"></div>
+            <div><div class="skel-line"></div><div class="skel-line short"></div><div class="skel-line"></div></div>
+          </div>
+          <div class="row skel">
+            <div class="row-thumb"></div>
+            <div><div class="skel-line"></div><div class="skel-line short"></div><div class="skel-line"></div></div>
+          </div>
+          <div class="row skel">
+            <div class="row-thumb"></div>
+            <div><div class="skel-line"></div><div class="skel-line short"></div><div class="skel-line"></div></div>
+          </div>
+          <div class="row skel">
+            <div class="row-thumb"></div>
+            <div><div class="skel-line"></div><div class="skel-line short"></div><div class="skel-line"></div></div>
+          </div>
+        </div>
+
+        <aside class="rail">
+          <section class="rail-block">
+            <h2 class="rail-title">标签<span id="tagCount"></span></h2>
+            <ul class="tag-list" id="tagList"></ul>
+          </section>
+
+          <section class="rail-block">
+            <h2 class="rail-title">归档<span id="monthCount"></span></h2>
+            <ul class="month-list" id="monthList"></ul>
+          </section>
+
+          <section class="rail-block">
+            <h2 class="rail-title">这一本</h2>
+            <ul class="kv" id="railStats">
+              <li><span>开始</span><b id="railSince">2026</b></li>
+              <li><span>篇数</span><b id="railCount">—</b></li>
+              <li><span>最近</span><b id="railLatest">—</b></li>
+              <li><span>加密</span><b>AES-256-GCM</b></li>
+            </ul>
+          </section>
+
+          <section class="rail-block">
+            <h2 class="rail-title">关于</h2>
+            <p class="rail-text">私人的日常记录。文字与图片都在本机加密后才上传，仓库里只有密文。</p>
+            <a class="rail-link" href="./about.html">它是怎么运行的 →</a>
+          </section>
+        </aside>
+      </div>
+
     </div>
-  </div>
-
-  <div class="wrap layout">
-    <div class="stream" id="grid" aria-live="polite">
-      <div class="row skel">
-        <div class="row-thumb"></div>
-        <div><div class="skel-line"></div><div class="skel-line short"></div><div class="skel-line"></div></div>
-      </div>
-      <div class="row skel">
-        <div class="row-thumb"></div>
-        <div><div class="skel-line"></div><div class="skel-line short"></div><div class="skel-line"></div></div>
-      </div>
-      <div class="row skel">
-        <div class="row-thumb"></div>
-        <div><div class="skel-line"></div><div class="skel-line short"></div><div class="skel-line"></div></div>
-      </div>
-    </div>
-
-    <aside class="rail">
-      <section class="rail-block">
-        <h2 class="rail-title">标签<span id="tagCount"></span></h2>
-        <ul class="tag-list" id="tagList"></ul>
-      </section>
-
-      <section class="rail-block">
-        <h2 class="rail-title">这一本</h2>
-        <ul class="kv" id="railStats">
-          <li><span>开始</span><b id="railSince">2026</b></li>
-          <li><span>篇数</span><b id="railCount">—</b></li>
-          <li><span>最近</span><b id="railLatest">—</b></li>
-          <li><span>加密</span><b>AES-256-GCM</b></li>
-        </ul>
-      </section>
-
-      <section class="rail-block">
-        <h2 class="rail-title">关于</h2>
-        <p class="rail-text">私人的日常记录。文字与图片都在本机加密后才上传，仓库里只有密文。</p>
-        <a class="rail-link" href="./about.html">它是怎么运行的 →</a>
-      </section>
-    </aside>
   </div>
 </main>
 
