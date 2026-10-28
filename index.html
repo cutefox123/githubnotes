@@ -16,6 +16,7 @@
 <style>
   /* 启动锁屏：必须内联，因为应用样式表也是加密资源，解锁后才注入 */
   html, body { margin: 0; height: 100%; overflow: hidden; }
+  #bootScreen, #bootScreen *, #bootScreen *::before, #bootScreen *::after { box-sizing: border-box; }
   #bootScreen {
     position: fixed; inset: 0; z-index: 9999;
     display: grid; place-items: center;
