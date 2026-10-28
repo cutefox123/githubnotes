@@ -2,7 +2,7 @@
    页面与脚本走「网络优先」，保证更新能立刻生效；图标等静态资源「缓存优先」。
    离线时一律回落到缓存，所以断网依然可以书写。 */
 
-const VERSION = 'inknote-v1.0.4';
+const VERSION = 'inknote-v1.0.5';
 const CACHE = 'inknote-shell-' + VERSION;
 
 const SHELL = [
