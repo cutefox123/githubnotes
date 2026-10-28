@@ -1,8 +1,8 @@
 /* 站点的基本信息都在这儿，想改名字、简介、仓库，只改这个文件即可 */
 
 export const SITE = {
-  title: '拾光',
-  titleEn: 'DAILY GLEANINGS',
+  title: '拾光日记',
+  titleEn: 'A PRIVATE DIARY',
   tagline: '把日子过成可以翻的样子。',
   author: 'smnh',
   bio: '住在南方小城。喜欢清晨的雾、旧书店的霉味、冰箱里剩下的半颗柠檬。这里放一些没什么用、但很喜欢的日常。',

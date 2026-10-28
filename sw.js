@@ -1,8 +1,8 @@
-/* 拾光 · Service Worker
+/* 拾光日记 · Service Worker
    壳（页面、样式、脚本）走网络优先，保证更新立刻生效；
    文章与封面的密文也走网络优先，但缓存键去掉时间戳参数，离线时仍能翻旧文章。 */
 
-const VERSION = 'shiguang-v1.4.0';
+const VERSION = 'diary-v2.0.0';
 const CACHE = 'shiguang-' + VERSION;
 
 const SHELL = [
@@ -19,6 +19,7 @@ const SHELL = [
   './assets/js/data.js',
   './assets/js/md.js',
   './assets/js/site.js',
+  './assets/js/icons.js',
   './assets/js/home.js',
   './assets/js/post.js',
   './assets/js/write.js',

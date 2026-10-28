@@ -283,6 +283,11 @@ function bitmapFromImg(file) {
   });
 }
 
+function hhmm(ts) {
+  const d = new Date(ts);
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+
 /* ---------------- 草稿 ---------------- */
 
 let draftTimer = null;
@@ -306,7 +311,7 @@ function collect() {
 }
 
 function saveDraft(manual) {
-  if (editId) { if (manual) toast('修改中的文章不用存草稿，直接点更新'); return; }
+  if (editId) { if (manual) toast('修改中的日记不用存草稿，直接点更新'); return; }
   const data = collect();
   if (!data.title && !data.body) {
     if (manual) toast('还什么都没写呢');
@@ -494,7 +499,8 @@ async function publish() {
       cover: coverPath || '',
       coverFull: coverFullPath || '',
       createdAt: (state.existing && state.existing.createdAt) || now,
-      updatedAt: now
+      updatedAt: now,
+      time: (state.existing && state.existing.time) || hhmm(now)
     };
 
     if (coverBytes) {
@@ -513,7 +519,7 @@ async function publish() {
     const existingPost = await gh.readFile(SITE.repo, 'posts/' + id + '.json');
     await gh.writeFile(SITE.repo, 'posts/' + id + '.json', {
       text: JSON.stringify(sealed),
-      message: (isNew ? '新文章：' : '更新：') + post.title,
+      message: (isNew ? '新日记：' : '更新：') + post.title,
       sha: existingPost ? existingPost.sha : undefined
     });
 
@@ -527,6 +533,8 @@ async function publish() {
       place: post.place,
       tags: post.tags,
       excerpt: post.excerpt,
+      time: post.time,
+      reading: Math.max(1, Math.round(String(post.body || '').length / 320)),
       cover: post.cover,
       coverFull: post.coverFull,
       updatedAt: post.updatedAt

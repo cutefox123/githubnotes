@@ -59,7 +59,7 @@ function normalizeIndex(data) {
 
 export async function loadPost(id) {
   const res = await fetch(SITE.paths.posts + '/' + encodeURIComponent(id) + '.json?t=' + Date.now(), { cache: 'no-store' });
-  if (!res.ok) throw new Error('文章读取失败（' + res.status + '）');
+  if (!res.ok) throw new Error('日记读取失败（' + res.status + '）');
   const payload = await res.json();
   return vault.openJSON(payload);
 }

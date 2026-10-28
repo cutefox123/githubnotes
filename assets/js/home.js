@@ -1,10 +1,13 @@
-/* 首页：解锁 → 取回目录 → 渲染文章流 + 右栏 */
+/* 日记首页：解锁 → 取回目录 → 文字流 + 日历 + 统计 */
 
-import { gate, applyTheme, bindThemeToggles, bindLockButton, toast, $, fmtDate } from './site.js';
-import { loadIndex, loadImage, allTags } from './data.js';
+import { gate, applyTheme, bindThemeToggles, bindLockButton, toast, $, parseDate, fmtDate } from './site.js';
+import { loadIndex, allTags } from './data.js';
+import { weatherIcon, icon } from './icons.js';
 import { SITE } from './config.js';
 
-const state = { posts: [], tag: '', month: '', q: '', io: null };
+const state = { posts: [], mode: 'all', tag: '', day: '', q: '', ym: '' };
+
+const WEEK = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
 function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => (
@@ -13,90 +16,141 @@ function escapeHtml(s) {
 }
 const escapeAttr = escapeHtml;
 
+const ymd = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const ymOf = (d) => String(ymd(d)).slice(0, 7);
+
 function headerScroll() {
-  const header = $('#siteHeader');
-  if (!header) return;
-  const onScroll = () => header.classList.toggle('is-stuck', window.scrollY > 8);
+  const bar = $('#appbar');
+  if (!bar) return;
+  const onScroll = () => bar.classList.toggle('is-stuck', window.scrollY > 6);
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 }
 
-/* ---------------- 图片懒加载 ---------------- */
+/* ---------------- 统计 ---------------- */
 
-async function loadCover(img) {
-  if (img.dataset.loaded) return;
-  img.dataset.loaded = '1';
-  try {
-    const url = await loadImage(img.dataset.src);
-    img.addEventListener('load', () => img.classList.add('is-loaded'), { once: true });
-    img.src = url;
-  } catch {
-    const media = img.closest('.row-thumb');
-    if (media) media.classList.add('no-img');
-    img.remove();
+function streakOf(posts) {
+  const days = new Set(posts.map((p) => p.date).filter(Boolean));
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  if (!days.has(ymd(d))) {
+    d.setDate(d.getDate() - 1);
+    if (!days.has(ymd(d))) return 0;
   }
+  let n = 0;
+  while (days.has(ymd(d))) {
+    n++;
+    d.setDate(d.getDate() - 1);
+    if (n > 4000) break;
+  }
+  return n;
 }
 
-function observeImages(root) {
-  const imgs = Array.from(root.querySelectorAll('img[data-src]'));
-  if (!imgs.length) return;
+function renderStats() {
+  const posts = state.posts;
+  const now = new Date();
+  const thisMonth = ymOf(now);
+  const monthCount = posts.filter((p) => String(p.date || '').slice(0, 7) === thisMonth).length;
+  const days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const tags = allTags(posts);
 
-  if (!('IntersectionObserver' in window)) {
-    imgs.forEach(loadCover);
-    return;
-  }
+  const set = (id, val) => { const el = $(id); if (el) el.textContent = val; };
+  set('#statStreak', String(streakOf(posts)));
+  set('#statMonth', String(monthCount));
+  set('#statTotal', String(posts.length));
 
-  if (!state.io) {
-    state.io = new IntersectionObserver((entries) => {
-      entries.forEach((e) => {
-        if (!e.isIntersecting) return;
-        state.io.unobserve(e.target);
-        loadCover(e.target);
-      });
-    }, { rootMargin: '500px 0px' });
-  }
+  set('#kpiMonth', monthCount + ' 篇');
+  set('#kpiTotal', posts.length + ' 篇');
+  set('#kpiTags', tags.length + ' 个');
+  set('#kpiSince', posts.length ? fmtDate(posts[posts.length - 1].date) : '—');
 
-  imgs.forEach((img) => state.io.observe(img));
+  const bar = $('#kpiBar');
+  if (bar) bar.style.width = Math.min(100, Math.round((monthCount / days) * 100)) + '%';
+
+  set('#tagCnt2', tags.length ? String(tags.length) : '');
+  set('#footNote', posts.length ? '共 ' + posts.length + ' 篇 · 内容以密文存放' : '内容以密文存放');
+
+  const kicker = $('#heroKicker');
+  if (kicker) kicker.textContent = 'private diary · since ' + SITE.since;
+  const sub = $('#heroSub');
+  if (sub) sub.textContent = SITE.tagline;
 }
 
-/* ---------------- 单条 ---------------- */
+/* ---------------- 日历 ---------------- */
 
-function metaLine(p, isLatest) {
-  const bits = [];
-  if (isLatest) bits.push('<span class="row-badge">最新</span>');
-  bits.push(`<span>${fmtDate(p.date)}</span>`);
-  if (p.weather) bits.push('<span>' + escapeHtml(p.weather) + '</span>');
-  if (p.place) bits.push('<span>' + escapeHtml(p.place) + '</span>');
-  if (p.reading) bits.push('<span>' + p.reading + ' 分钟</span>');
-  const tags = (p.tags || []).slice(0, 3);
-  if (tags.length) {
-    bits.push('<span class="row-tags">' + tags.map((t) => '#' + escapeHtml(t)).join(' ') + '</span>');
+function renderCalendar() {
+  const grid = $('#calGrid');
+  const title = $('#calTitle');
+  if (!grid) return;
+
+  const ym = state.ym || ymOf(new Date());
+  const [y, m] = ym.split('-').map(Number);
+  const first = new Date(y, m - 1, 1);
+  const pad = (first.getDay() + 6) % 7;          // 周一为一周之始
+  const total = new Date(y, m, 0).getDate();
+  const todayStr = ymd(new Date());
+  const marked = new Set(state.posts.map((p) => p.date).filter(Boolean));
+
+  if (title) title.textContent = y + ' 年 ' + m + ' 月';
+
+  const cells = [];
+  for (let i = 0; i < pad; i++) cells.push('<span class="cal-cell is-blank"></span>');
+
+  for (let d = 1; d <= total; d++) {
+    const key = y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    const cls = ['cal-cell'];
+    const has = marked.has(key);
+    if (has) cls.push('has');
+    if (key === todayStr) cls.push('is-today');
+    if (key === state.day) cls.push('is-picked');
+    cells.push(`<button class="${cls.join(' ')}" type="button" data-day="${key}"${has ? '' : ' tabindex="-1"'}>${d}</button>`);
   }
-  return '<div class="row-meta">' + bits.join('') + '</div>';
+
+  grid.innerHTML = cells.join('');
+  grid.querySelectorAll('.cal-cell.has').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const d = btn.dataset.day;
+      state.day = state.day === d ? '' : d;
+      renderCalendar();
+      renderStream();
+      if (state.day) {
+        const stream = $('#grid');
+        if (stream) window.scrollTo({ top: stream.getBoundingClientRect().top + window.scrollY - 130, behavior: 'smooth' });
+      }
+    });
+  });
 }
 
-function rowEl(p, isLatest) {
-  const a = document.createElement('a');
-  a.className = 'row';
-  a.href = './post.html?id=' + encodeURIComponent(p.id);
+/* ---------------- 筛选 ---------------- */
 
-  a.innerHTML = `
-    <div class="row-thumb${p.cover ? '' : ' is-empty'}">
-      ${p.cover ? `<img data-src="${p.cover}" alt="${escapeAttr(p.title)}" loading="lazy">` : ''}
-    </div>
-    <div class="row-main">
-      ${metaLine(p, isLatest)}
-      <h2 class="row-title">${escapeHtml(p.title || '无题')}</h2>
-      ${p.excerpt ? `<p class="row-excerpt">${escapeHtml(p.excerpt)}</p>` : ''}
-    </div>`;
-  return a;
+function setMode(mode) {
+  state.mode = mode;
+  state.day = '';
+  renderChips();
+  renderStream();
+}
+
+function setTag(name) {
+  state.tag = name;
+  state.day = '';
+  renderTags();
+  renderStream();
 }
 
 function filtered() {
+  const now = new Date();
+  const thisMonth = ymOf(now);
   const q = state.q.trim().toLowerCase();
+
   return state.posts.filter((p) => {
+    if (state.day && p.date !== state.day) return false;
     if (state.tag && !(p.tags || []).includes(state.tag)) return false;
-    if (state.month && !String(p.date || '').startsWith(state.month)) return false;
+    if (state.mode === 'week') {
+      const d = parseDate(p.date);
+      if ((now - d) / 86400000 > 7) return false;
+    }
+    if (state.mode === 'month' && String(p.date || '').slice(0, 7) !== thisMonth) return false;
+    if (state.mode === 'photo' && !p.cover) return false;
     if (!q) return true;
     const hay = [p.title, p.excerpt, (p.tags || []).join(' '), p.place, p.mood, p.weather]
       .filter(Boolean).join(' ').toLowerCase();
@@ -104,186 +158,136 @@ function filtered() {
   });
 }
 
-/* ---------------- 头条 ---------------- */
+const MODES = [
+  { key: 'all', label: '全部' },
+  { key: 'week', label: '最近七天' },
+  { key: 'month', label: '本月' },
+  { key: 'photo', label: '有照片' }
+];
 
-function renderFeatured(p) {
-  const box = $('#featured');
-  if (!box) return;
-
-  if (!p) { box.hidden = true; return; }
-  box.hidden = false;
-
-  const link = $('#featLink');
-  if (link) link.href = './post.html?id=' + encodeURIComponent(p.id);
-
-  const photo = $('#featPhoto');
-  const img = $('#featImg');
-  if (photo && img) {
-    photo.classList.toggle('is-empty', !p.cover);
-    img.hidden = !p.cover;
-    if (p.cover) {
-      img.alt = p.title || '';
-      img.removeAttribute('src');
-      img.classList.remove('is-loaded');
-      img.dataset.src = p.cover;
-      delete img.dataset.loaded;
-    }
-  }
-
-  const dateEl = $('#featDate');
-  if (dateEl) dateEl.textContent = String(p.date || '').replace(/-/g, '.').slice(2);
-
-  const bits = [`<span>${fmtDate(p.date)}</span>`];
-  if (p.weather) bits.push('<span>' + escapeHtml(p.weather) + '</span>');
-  if (p.place) bits.push('<span>' + escapeHtml(p.place) + '</span>');
-  if (p.reading) bits.push('<span>' + p.reading + ' 分钟</span>');
-  const m = $('#featMeta');
-  if (m) m.innerHTML = bits.join('');
-
-  const t = $('#featTitle');
-  if (t) t.textContent = p.title || '无题';
-
-  const ex = $('#featExcerpt');
-  if (ex) {
-    ex.textContent = p.excerpt || '';
-    ex.hidden = !p.excerpt;
-  }
-
-  const tg = $('#featTags');
-  if (tg) {
-    tg.innerHTML = (p.tags || []).slice(0, 4)
-      .map((x) => '<span>#' + escapeHtml(x) + '</span>').join('');
-  }
-
-  if (img && img.isConnected) observeImages(box);
-}
-
-/* ---------------- 筛选条 / 右栏标签与归档 ---------------- */
-
-function setTag(name) {
-  state.tag = name;
-  renderFilters();
-  renderGrid();
-}
-
-function setMonth(key) {
-  state.month = state.month === key ? '' : key;
-  renderFilters();
-  renderGrid();
-}
-
-function monthsOf(posts) {
-  const map = new Map();
-  posts.forEach((p) => {
-    const key = String(p.date || '').slice(0, 7);
-    if (!/^\d{4}-\d{2}$/.test(key)) return;
-    map.set(key, (map.get(key) || 0) + 1);
-  });
-  return Array.from(map.entries())
-    .sort((a, b) => b[0].localeCompare(a[0]))
-    .map(([key, count]) => ({ key, label: key.slice(0, 4) + '.' + key.slice(5), count }));
-}
-
-function renderFilters() {
+function renderChips() {
   const box = $('#chips');
-  const listEl = $('#tagList');
-  const monthEl = $('#monthList');
-  const tags = allTags(state.posts);
-  const months = monthsOf(state.posts);
-
-  if (box) {
-    const items = [{ name: '', label: '全部' }, ...tags.map((t) => ({ name: t.name, label: t.name }))];
-    box.innerHTML = items.map((t) => (
-      `<button class="chip${t.name === state.tag ? ' is-on' : ''}" data-tag="${escapeAttr(t.name)}">${escapeHtml(t.label)}</button>`
-    )).join('');
-    box.querySelectorAll('.chip').forEach((btn) => {
-      btn.addEventListener('click', () => setTag(btn.dataset.tag || ''));
-    });
-  }
-
-  if (listEl) {
-    listEl.innerHTML = tags.map((t) => (
-      `<li><button class="${t.name === state.tag ? 'is-on' : ''}" data-tag="${escapeAttr(t.name)}">` +
-      `<span>${escapeHtml(t.name)}</span><span class="n">${t.count}</span></button></li>`
-    )).join('');
-    listEl.querySelectorAll('button').forEach((btn) => {
-      btn.addEventListener('click', () => setTag(btn.dataset.tag === state.tag ? '' : btn.dataset.tag));
-    });
-  }
-
-  if (monthEl) {
-    monthEl.innerHTML = months.map((m) => (
-      `<li><button class="${m.key === state.month ? 'is-on' : ''}" data-month="${m.key}">` +
-      `<span>${m.label}</span><span class="n">${m.count}</span></button></li>`
-    )).join('');
-    monthEl.querySelectorAll('button').forEach((btn) => {
-      btn.addEventListener('click', () => setMonth(btn.dataset.month));
-    });
-  }
-
-  const count = $('#tagCount');
-  if (count) count.textContent = tags.length ? tags.length + ' 个' : '';
-  const mcount = $('#monthCount');
-  if (mcount) mcount.textContent = months.length ? months.length + ' 个月' : '';
+  if (!box) return;
+  box.innerHTML = MODES.map((m) => (
+    `<button class="chip${m.key === state.mode ? ' is-on' : ''}" data-mode="${m.key}" type="button">${m.label}</button>`
+  )).join('');
+  box.querySelectorAll('.chip').forEach((btn) => {
+    btn.addEventListener('click', () => setMode(btn.dataset.mode));
+  });
 }
 
-function renderGrid() {
+function renderTags() {
+  const list = $('#tagList');
+  if (!list) return;
+  const tags = allTags(state.posts);
+  if (!tags.length) {
+    list.innerHTML = '<li style="padding:6px 8px;font-size:12px;color:var(--ink-4)">还没有标签</li>';
+    return;
+  }
+  list.innerHTML = tags.map((t) => (
+    `<li><button class="${t.name === state.tag ? 'is-on' : ''}" data-tag="${escapeAttr(t.name)}" type="button">` +
+    `<span class="dot"></span><span>${escapeHtml(t.name)}</span><span class="n">${t.count}</span></button></li>`
+  )).join('');
+  list.querySelectorAll('button').forEach((btn) => {
+    btn.addEventListener('click', () => setTag(btn.dataset.tag === state.tag ? '' : btn.dataset.tag));
+  });
+}
+
+/* ---------------- 文字流 ---------------- */
+
+function entryEl(p) {
+  const d = parseDate(p.date);
+  const a = document.createElement('a');
+  a.className = 'entry';
+  a.href = './post.html?id=' + encodeURIComponent(p.id);
+
+  const meta = [];
+  if (p.mood) meta.push(`<span class="badge is-mood">${icon('mood')}${escapeHtml(p.mood)}</span>`);
+  if (p.place) meta.push(`<span class="badge is-place">${icon('pin')}${escapeHtml(p.place)}</span>`);
+  (p.tags || []).slice(0, 3).forEach((t) => {
+    meta.push(`<span class="badge is-tag">#${escapeHtml(t)}</span>`);
+  });
+
+  a.innerHTML = `
+    <div class="entry-day">
+      <b>${String(d.getDate()).padStart(2, '0')}</b>
+      <span>${WEEK[d.getDay()]}</span>
+      ${p.weather ? `<span class="wx" title="${escapeAttr(p.weather)}">${weatherIcon(p.weather)}</span>` : ''}
+    </div>
+    <div class="entry-main">
+      <div class="entry-top">
+        <h2 class="entry-title">${escapeHtml(p.title || '无题')}</h2>
+        ${p.time ? `<span class="entry-time">${escapeHtml(p.time)}</span>` : ''}
+      </div>
+      ${p.excerpt ? `<p class="entry-text">${escapeHtml(p.excerpt)}</p>` : ''}
+      ${meta.length ? `<div class="entry-meta">${meta.join('')}</div>` : ''}
+    </div>
+    <span class="entry-arrow">${icon('arrow')}</span>`;
+  return a;
+}
+
+function renderStream() {
   const grid = $('#grid');
   if (!grid) return;
+
   const list = filtered();
-  const showLatest = !state.tag && !state.month && !state.q;
-
-  // 无筛选时，最新一篇提到顶部做头条，列表里不再重复
-  const lead = showLatest && list.length ? list[0] : null;
-  renderFeatured(lead);
-  const rows = lead ? list.slice(1) : list;
-
   grid.innerHTML = '';
 
   if (!list.length) {
-    const hint = state.posts.length ? '换个词、点「全部」，或者清掉筛选再看看' : '写第一篇吧，哪怕只有一句话';
-    grid.innerHTML = `<div class="empty-state"><strong>这里还是空的</strong>${hint}</div>`;
+    const hint = state.posts.length
+      ? '换个过滤条件看看，或者清掉筛选回到全部'
+      : '还没有写过。翻到第一页，写一句也算。';
+    grid.innerHTML = `<div class="empty-state"><strong>这里空着</strong>${hint}</div>`;
     return;
   }
 
   const frag = document.createDocumentFragment();
-  rows.forEach((p, i) => {
-    const el = rowEl(p, false);
-    el.style.animationDelay = Math.min(i * 34, 260) + 'ms';
+
+  if (state.day) {
+    const note = document.createElement('div');
+    note.className = 'month-bar';
+    note.style.position = 'static';
+    note.innerHTML = `<b>${fmtDate(state.day)}</b><i>只看这一天</i>`;
+    frag.appendChild(note);
+  } else {
+    // 按月分组
+    const groups = [];
+    let cur = null;
+    list.forEach((p) => {
+      const key = String(p.date || '').slice(0, 7);
+      if (!cur || cur.key !== key) {
+        cur = { key, items: [] };
+        groups.push(cur);
+      }
+      cur.items.push(p);
+    });
+
+    let i = 0;
+    groups.forEach((g) => {
+      const [y, m] = g.key.split('-');
+      const bar = document.createElement('div');
+      bar.className = 'month-bar';
+      bar.innerHTML = `<b>${y || ''} 年 ${Number(m) || ''} 月</b><i>${g.items.length} 篇</i>`;
+      frag.appendChild(bar);
+
+      g.items.forEach((p) => {
+        const el = entryEl(p);
+        el.style.animationDelay = Math.min(i * 24, 260) + 'ms';
+        i++;
+        frag.appendChild(el);
+      });
+    });
+
+    grid.appendChild(frag);
+    return;
+  }
+
+  list.forEach((p, i) => {
+    const el = entryEl(p);
+    el.style.animationDelay = Math.min(i * 24, 240) + 'ms';
     frag.appendChild(el);
   });
   grid.appendChild(frag);
-  observeImages(grid);
-}
-
-/* ---------------- 头版与右栏 ---------------- */
-
-function renderMeta(index) {
-  const posts = index.posts || [];
-  const kicker = $('#heroKicker');
-  const sub = $('#heroSub');
-  const side = $('#heroSide');
-
-  if (kicker) kicker.textContent = SITE.titleEn.toLowerCase() + ' · since ' + SITE.since;
-  if (sub) sub.textContent = SITE.tagline;
-
-  const count = posts.length;
-  const latest = count ? fmtDate(posts[0].date) : '—';
-
-  if (side) {
-    side.innerHTML = `
-      <div><dt>篇数</dt><dd>${count || '0'}</dd></div>
-      <div><dt>最近</dt><dd>${latest}</dd></div>
-      <div><dt>存放</dt><dd>密文</dd></div>`;
-  }
-
-  const set = (id, val) => { const el = $(id); if (el) el.textContent = val; };
-  set('#railSince', String(SITE.since));
-  set('#railCount', count ? count + ' 篇' : '0 篇');
-  set('#railLatest', latest);
-
-  const foot = $('#footNote');
-  if (foot && count) foot.textContent = '共 ' + count + ' 篇 · 内容以密文存放';
 }
 
 /* ---------------- 启动 ---------------- */
@@ -298,25 +302,41 @@ async function boot() {
   if (q) {
     q.addEventListener('input', () => {
       state.q = q.value;
-      renderGrid();
+      state.day = '';
+      renderStream();
     });
   }
 
+  const prev = $('#calPrev');
+  const next = $('#calNext');
+  const shift = (n) => {
+    const ym = state.ym || ymOf(new Date());
+    const [y, m] = ym.split('-').map(Number);
+    const d = new Date(y, m - 1 + n, 1);
+    state.ym = ymOf(d);
+    renderCalendar();
+  };
+  if (prev) prev.addEventListener('click', () => shift(-1));
+  if (next) next.addEventListener('click', () => shift(1));
+
   await gate(async () => {
-    // 支持从文章页的标签链接带参进入：index.html?tag=散步
     const tagParam = new URLSearchParams(location.search).get('tag');
     if (tagParam) state.tag = tagParam;
 
     try {
       const index = await loadIndex();
-      state.posts = index.posts || [];
-      renderMeta(index);
-      renderFilters();
-      renderGrid();
+      state.posts = (index.posts || []).slice();
+      state.ym = state.posts.length ? String(state.posts[0].date).slice(0, 7) : ymOf(new Date());
+
+      renderStats();
+      renderChips();
+      renderTags();
+      renderCalendar();
+      renderStream();
     } catch (err) {
       const grid = $('#grid');
       if (grid) {
-        grid.innerHTML = `<div class="empty-state"><strong>没能打开目录</strong>${
+        grid.innerHTML = `<div class="empty-state"><strong>没能打开日记本</strong>${
           escapeHtml(err.message || '网络或配置出了点问题')
         }<br><br>可以刷新页面再试一次。</div>`;
       }

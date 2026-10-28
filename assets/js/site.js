@@ -22,7 +22,7 @@ export function applyTheme(t) {
   const theme = t || currentTheme();
   document.documentElement.setAttribute('data-theme', theme);
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', theme === 'dark' ? '#121110' : '#e6e2d9');
+  if (meta) meta.setAttribute('content', theme === 'dark' ? '#0e1114' : '#dbe1e8');
   $$('[data-theme-toggle]').forEach((btn) => {
     btn.setAttribute('aria-label', theme === 'dark' ? '切换到浅色' : '切换到深色');
     btn.classList.toggle('is-dark', theme === 'dark');
@@ -106,11 +106,11 @@ function lockMarkup() {
   <div class="lock-card">
     <div class="lock-seal" aria-hidden="true">拾</div>
     <p class="lock-kicker">${SITE.titleEn}</p>
-    <h1 class="lock-title">${SITE.title}</h1>
+    <h1 class="lock-title">拾光日记</h1>
     <p class="lock-sub">这里记着一些私人的日子，<br>需要密码才能翻开。</p>
     <form class="lock-form" id="lockForm" autocomplete="on">
       <div class="lock-field">
-        <input id="lockPass" type="password" autocomplete="current-password" placeholder="访问密码" aria-label="访问密码">
+        <input id="lockPass" type="password" autocomplete="current-password" placeholder="日记密码" aria-label="访问密码">
         <button type="submit" id="lockGo">翻开</button>
       </div>
       <label class="lock-remember"><input type="checkbox" id="lockRemember" checked><span>这台设备记住 30 天</span></label>
