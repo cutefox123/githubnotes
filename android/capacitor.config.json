@@ -1,0 +1,13 @@
+{
+  "appId": "com.smnh.shiguang",
+  "appName": "拾光日记",
+  "webDir": "www",
+  "backgroundColor": "#ece1c6",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#ece1c6"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

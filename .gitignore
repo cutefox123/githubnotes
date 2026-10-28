@@ -14,3 +14,21 @@ Thumbs.db
 
 # 项目内部数据
 .workbuddy/
+
+# 安卓壳工程的构建产物（工程本身保留，产物不进仓库）
+android/android/app/build/
+android/android/.gradle/
+android/android/build/
+android/android/local.properties
+android/android/app/.cxx/
+android/android/capacitor-cordova-android-plugins/build/
+android/www/
+android/node_modules/
+
+# 编译出的 APK 只留本机
+android/*.apk
+
+# 签名证书与口令只留本机
+android/android/keystore.properties
+android/android/app/shiguang.jks
+*.jks

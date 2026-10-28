@@ -1,0 +1,18 @@
+{
+  "name": "shiguang-diary-app",
+  "version": "3.0.0",
+  "private": true,
+  "description": "拾光日记 · 安卓壳（Capacitor）",
+  "scripts": {
+    "sync": "node sync-www.mjs && cap sync android",
+    "build": "node sync-www.mjs && cap sync android && cd android && gradlew.bat assembleRelease"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/core": "8.5.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3",
+    "sharp": "^0.35.5"
+  }
+}

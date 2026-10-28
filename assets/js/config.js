@@ -12,6 +12,10 @@ export const SITE = {
     name: 'githubnotes',
     branch: 'main'
   },
+  // 打包成手机 App 后，页面在本地、内容仍然从线上取：
+  // 新写的日记改完仓库几十秒就能在 App 里看到；断网时回退到包里那份密文。
+  remote: 'https://cutefox123.github.io/githubnotes/',
+
   // 加密文件的位置，一般不用改
   paths: {
     lock: 'assets/lock.json',
@@ -20,6 +24,8 @@ export const SITE = {
     media: 'media'
   }
 };
+
+export const IS_NATIVE = !!(typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 
 export const MOODS = ['平静', '自在', '雀跃', '温柔', '疲倦', '想念', '发呆'];
 export const WEATHERS = ['晴', '多云', '阴', '小雨', '大雨', '风', '雪', '雾'];

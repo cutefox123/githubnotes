@@ -6,6 +6,34 @@ import * as vault from './vault.js';
 import { stripMarkdown } from './md.js';
 
 const INDEX_CACHE = 'sg.index.v1';
+
+/* 原生 App 里优先读线上那份密文，读不到再用包内副本 */
+const REMOTE = SITE.remote && window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()
+  ? SITE.remote.replace(/\/?$/, '/')
+  : '';
+
+function urlsFor(path) {
+  const clean = String(path || '').replace(/^\.\//, '');
+  const list = [];
+  if (REMOTE && !/^https?:/i.test(clean)) list.push(REMOTE + clean);
+  list.push(clean);
+  return list;
+}
+
+async function fetchFirst(path, as) {
+  let lastErr = null;
+  for (const url of urlsFor(path)) {
+    const full = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
+    try {
+      const res = await fetch(full, { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return as === 'json' ? await res.json() : new Uint8Array(await res.arrayBuffer());
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error('读取失败');
+}
 const imgCache = new Map();
 let indexMemo = null;
 
@@ -29,9 +57,7 @@ function readCachedIndex() {
 export async function loadIndex({ fresh = false } = {}) {
   if (indexMemo && !fresh) return indexMemo;
   try {
-    const res = await fetch(SITE.paths.index + '?t=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const payload = await res.json();
+    const payload = await fetchFirst(SITE.paths.index, 'json');
     const data = await vault.openJSON(payload);
     indexMemo = normalizeIndex(data);
     cacheIndex(indexMemo);
@@ -58,18 +84,19 @@ function normalizeIndex(data) {
 }
 
 export async function loadPost(id) {
-  const res = await fetch(SITE.paths.posts + '/' + encodeURIComponent(id) + '.json?t=' + Date.now(), { cache: 'no-store' });
-  if (!res.ok) throw new Error('日记读取失败（' + res.status + '）');
-  const payload = await res.json();
+  let payload;
+  try {
+    payload = await fetchFirst(SITE.paths.posts + '/' + encodeURIComponent(id) + '.json', 'json');
+  } catch (err) {
+    throw new Error('日记读取失败（' + (err && err.message ? err.message : '网络') + '）');
+  }
   return vault.openJSON(payload);
 }
 
 export async function loadImage(path) {
   if (!path) return '';
   if (imgCache.has(path)) return imgCache.get(path);
-  const res = await fetch(path + (path.includes('?') ? '&' : '?') + 't=' + Math.floor(Date.now() / 60000), { cache: 'no-store' });
-  if (!res.ok) throw new Error('图片读取失败');
-  const buf = new Uint8Array(await res.arrayBuffer());
+  const buf = await fetchFirst(path, 'bin');
   const bytes = await vault.openBytes(buf);
   const type = sniffType(bytes);
   const url = URL.createObjectURL(new Blob([bytes], { type }));

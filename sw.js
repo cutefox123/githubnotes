@@ -2,7 +2,7 @@
    壳（页面、样式、脚本）走网络优先，保证更新立刻生效；
    文章与封面的密文也走网络优先，但缓存键去掉时间戳参数，离线时仍能翻旧文章。 */
 
-const VERSION = 'diary-v2.0.0';
+const VERSION = 'diary-v3.0.0';
 const CACHE = 'shiguang-' + VERSION;
 
 const SHELL = [
@@ -13,6 +13,9 @@ const SHELL = [
   './about.html',
   './manifest.webmanifest',
   './assets/css/blog.css',
+  './assets/css/fx.css',
+  './assets/fonts/inter-latin-var.woff2',
+  './assets/fonts/jetbrains-mono-latin-var.woff2',
   './assets/js/config.js',
   './assets/js/crypto.js',
   './assets/js/vault.js',
@@ -24,6 +27,8 @@ const SHELL = [
   './assets/js/post.js',
   './assets/js/write.js',
   './assets/js/api.js',
+  './assets/js/fx.js',
+  './assets/js/scene.js',
   './assets/lock.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
