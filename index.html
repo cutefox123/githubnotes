@@ -55,7 +55,7 @@
   .boot-title { margin: 0 0 5px; font-size: 19px; font-weight: 600; letter-spacing: .3px; }
   .boot-sub { margin: 0 0 22px; font-size: 12.5px; color: #8a8d93; line-height: 1.7; }
   .boot-field { position: relative; margin-bottom: 12px; }
-  #bootPwd {
+  #bootPwd, .boot-input {
     width: 100%; box-sizing: border-box;
     height: 42px; padding: 0 14px;
     border-radius: 11px;
@@ -66,11 +66,11 @@
     outline: none;
     transition: border-color .15s, box-shadow .15s;
   }
-  #bootPwd:focus {
+  #bootPwd:focus, .boot-input:focus {
     border-color: #2f6f62;
     box-shadow: 0 0 0 3px rgba(47, 111, 98, .13);
   }
-  #bootPwd::placeholder { color: #b3b6bb; }
+  #bootPwd::placeholder, .boot-input::placeholder { color: #b3b6bb; }
   .boot-row {
     display: flex; align-items: center; gap: 7px;
     margin: 2px 2px 18px;
@@ -78,7 +78,7 @@
     user-select: none; cursor: pointer;
   }
   .boot-row input { width: 14px; height: 14px; accent-color: #2f6f62; cursor: pointer; margin: 0; }
-  #bootGo {
+  #bootGo, #rsGo {
     width: 100%; height: 42px;
     border: 0; border-radius: 11px;
     background: linear-gradient(160deg, #35806f, #2a6157);
@@ -87,9 +87,9 @@
     transition: filter .15s, transform .1s;
     box-shadow: 0 8px 20px -10px rgba(42, 97, 87, .7);
   }
-  #bootGo:hover { filter: brightness(1.06); }
-  #bootGo:active { transform: translateY(1px); }
-  #bootGo:disabled { opacity: .65; cursor: default; }
+  #bootGo:hover, #rsGo:hover { filter: brightness(1.06); }
+  #bootGo:active, #rsGo:active { transform: translateY(1px); }
+  #bootGo:disabled, #rsGo:disabled { opacity: .65; cursor: default; }
   #bootMsg {
     min-height: 17px; margin: 12px 0 0;
     font-size: 12px; line-height: 1.5; color: #8a8d93;
@@ -102,6 +102,17 @@
     font-size: 12px; font-family: inherit; cursor: pointer;
   }
   .boot-foot { margin: 18px 0 0; font-size: 11px; color: #a9acb1; letter-spacing: .2px; }
+  .boot-link {
+    display: inline-block; margin: 14px 0 0; padding: 2px 4px;
+    border: 0; background: none;
+    font-size: 12px; font-family: inherit; color: #8a8d93; cursor: pointer;
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+  .boot-link:hover { color: #2f6f62; }
+  .boot-link[hidden] { display: none; }
+  #bootResetForm { text-align: center; }
+  #bootResetForm .boot-field { margin-bottom: 10px; }
+  .boot-note { margin: 0 0 14px; font-size: 12px; line-height: 1.65; color: #8a8d93; }
   @media (prefers-color-scheme: dark) {
     #bootScreen {
       background: #101216;
@@ -122,6 +133,8 @@
     }
     #bootPwd::placeholder { color: #5c6069; }
     #bootRetry { border-color: rgba(255, 255, 255, .12); color: #9a9ea6; }
+    .boot-link, .boot-note { color: #8f939b; }
+    .boot-link:hover { color: #7fc6b2; }
     .boot-foot { color: #6a6e77; }
   }
 </style>
@@ -142,6 +155,15 @@
     </form>
     <p id="bootMsg"></p>
     <button id="bootRetry" type="button" hidden onclick="location.reload()">重新加载</button>
+    <form id="bootResetForm" autocomplete="off" hidden>
+      <p class="boot-note">输入当前密码即可换成新密码</p>
+      <div class="boot-field"><input id="rsOld" class="boot-input" type="password" placeholder="当前访问密码" spellcheck="false"></div>
+      <div class="boot-field"><input id="rsNew" class="boot-input" type="password" placeholder="新密码（至少 6 位）" spellcheck="false"></div>
+      <div class="boot-field"><input id="rsNew2" class="boot-input" type="password" placeholder="再次输入新密码" spellcheck="false"></div>
+      <button id="rsGo" type="submit">生成新的加密包</button>
+      <button id="rsBack" type="button" class="boot-link">返回</button>
+    </form>
+    <button id="bootReset" type="button" class="boot-link">重设访问密码</button>
     <p class="boot-foot">内容以密文存放，密码不正确无法解密</p>
   </div>
 </div>

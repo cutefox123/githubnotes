@@ -3,7 +3,15 @@
  * 站点内容以密文形式存放在 assets/app.bin，只有输入正确的访问密码
  * 才能在浏览器里解密并运行。密码本身不会出现在仓库里。
  *
- * 解锁后可以选择「记住这台设备」，把派生密钥留在本机 localStorage，
+ * 密钥结构（与 tools/build.mjs 对应）：
+ *   app.bin.ct  = 用随机内容密钥 CK 加密的整个应用包
+ *   app.bin.env = 若干份「密码包裹的 CK」，每个可用密码一份
+ * 所以：
+ *   - 多个密码（主密码 + 旧密码）都能解锁；
+ *   - 重设密码只需重新包裹 CK，不必重新加密整个应用包；
+ *   - 本机重设后的封套存在 localStorage，下次直接用新密码进入。
+ *
+ * 解锁后可以选择「记住这台设备」，把 CK 留在本机 localStorage，
  * 30 天内免输入；在应用里「立即锁定」会清除它。
  */
 
@@ -12,11 +20,13 @@
 
   var BIN_URL = './assets/app.bin';
   var STORE_KEY = 'inknote.access';
+  var ENV_KEY = 'inknote.env';
   var REMEMBER_DAYS = 30;
   var MIN_LEN = 1;
+  var MIN_RESET_LEN = 6;
+  var AAD_TEXT = 'inknote-ck-v2';
 
   var $ = function (sel) { return document.querySelector(sel); };
-  var lockEl = null;
   var started = false;
 
   /* ------------------------------ 工具 ------------------------------ */
@@ -60,13 +70,22 @@
     try { localStorage.removeItem(STORE_KEY); } catch (e) {}
   }
 
-  /* ------------------------------ 解密 ------------------------------ */
-
-  async function importRawKey(kB64) {
-    return crypto.subtle.importKey('raw', b64ToBuf(kB64), { name: 'AES-GCM' }, true, ['decrypt']);
+  function readLocalEnv() {
+    try {
+      var raw = localStorage.getItem(ENV_KEY);
+      if (!raw) return null;
+      var obj = JSON.parse(raw);
+      return obj && obj.ct && obj.salt ? obj : null;
+    } catch (e) { return null; }
   }
 
-  async function deriveKey(password, saltB64, iter) {
+  function writeLocalEnv(env) {
+    try { localStorage.setItem(ENV_KEY, JSON.stringify(env)); } catch (e) {}
+  }
+
+  /* ------------------------------ 解密 ------------------------------ */
+
+  async function deriveKey(password, saltB64, iter, usage) {
     var enc = new TextEncoder();
     var base = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
     return crypto.subtle.deriveKey(
@@ -74,27 +93,60 @@
       base,
       { name: 'AES-GCM', length: 256 },
       true,
-      ['decrypt']
+      [usage]
     );
-  }
-
-  async function openWith(key, bin) {
-    var plain = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: b64ToBuf(bin.iv), tagLength: 128 },
-      key,
-      concatCt(bin)
-    );
-    return JSON.parse(new TextDecoder().decode(plain));
   }
 
   // esbuild 输出的 ct 不含 tag，Web Crypto 要求 tag 拼在密文尾部
-  function concatCt(bin) {
-    var ct = new Uint8Array(b64ToBuf(bin.ct));
-    var tag = new Uint8Array(b64ToBuf(bin.tag));
+  function concatCt(obj) {
+    var ct = new Uint8Array(b64ToBuf(obj.ct));
+    var tag = new Uint8Array(b64ToBuf(obj.tag));
     var out = new Uint8Array(ct.length + tag.length);
     out.set(ct, 0);
     out.set(tag, ct.length);
     return out.buffer;
+  }
+
+  // 用密码拆开一份封套，拿到内容密钥 CK
+  async function openEnvelope(password, env, iter) {
+    var kek = await deriveKey(password, env.salt, iter || 210000, 'decrypt');
+    return crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: b64ToBuf(env.iv), additionalData: new TextEncoder().encode(AAD_TEXT), tagLength: 128 },
+      kek,
+      concatCt(env)
+    );
+  }
+
+  // 用新密码把 CK 重新包一份
+  async function sealEnvelope(password, ck, iter) {
+    var salt = crypto.getRandomValues(new Uint8Array(16));
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var saltB64 = bufToB64(salt.buffer);
+    var kek = await deriveKey(password, saltB64, iter || 210000, 'encrypt');
+    var ctWithTag = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: iv, additionalData: new TextEncoder().encode(AAD_TEXT), tagLength: 128 },
+      kek,
+      ck
+    );
+    var all = new Uint8Array(ctWithTag);
+    var body = all.slice(0, all.length - 16);
+    var tag = all.slice(all.length - 16);
+    return {
+      salt: saltB64,
+      iv: bufToB64(iv.buffer),
+      tag: bufToB64(tag.buffer),
+      ct: bufToB64(body.buffer)
+    };
+  }
+
+  async function decryptPayload(ckRaw, bin) {
+    var ck = await crypto.subtle.importKey('raw', ckRaw, { name: 'AES-GCM' }, false, ['decrypt']);
+    var plain = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: b64ToBuf(bin.iv), tagLength: 128 },
+      ck,
+      concatCt(bin)
+    );
+    return JSON.parse(new TextDecoder().decode(plain));
   }
 
   var binCache = null;
@@ -104,8 +156,26 @@
     if (!res.ok) throw new Error('无法加载资源（HTTP ' + res.status + '）');
     var bin = await res.json();
     if (!bin || !bin.ct) throw new Error('资源格式不正确');
+    // 兼容 v1：单个 salt 等同于只有一个封套
+    if (!bin.env && bin.salt) bin.env = [{ salt: bin.salt, iv: bin.iv, tag: bin.tag, ct: bin.ct }];
     binCache = bin;
     return bin;
+  }
+
+  // 依次尝试：本机重设的封套 → 内嵌的各个密码封套
+  async function findKey(password, bin) {
+    var candidates = [];
+    var local = readLocalEnv();
+    if (local) candidates.push(local);
+    candidates = candidates.concat(bin.env || []);
+    for (var i = 0; i < candidates.length; i++) {
+      try {
+        var ck = await openEnvelope(password, candidates[i], bin.iter || 210000);
+        await decryptPayload(ck, bin); // 确认这把 CK 真的能解当前应用包
+        return ck;
+      } catch (e) { /* 这份封套不匹配，继续试下一份 */ }
+    }
+    return null;
   }
 
   /* ------------------------------ 启动应用 ------------------------------ */
@@ -155,6 +225,8 @@
   function showFatal(text) {
     var form = $('#bootForm');
     if (form) form.hidden = true;
+    var reset = $('#bootReset');
+    if (reset) reset.hidden = true;
     setMsg(text, 'err');
     var btn = $('#bootRetry');
     if (btn) btn.hidden = false;
@@ -165,30 +237,117 @@
     setMsg('正在解密…');
     try {
       var bin = await loadBin();
-      var key = await deriveKey(password, bin.salt, bin.iter || 210000);
-      var app;
-      try {
-        app = await openWith(key, bin);
-      } catch (e) {
+      var ck = await findKey(password, bin);
+      if (!ck) {
         setBusy(false);
         setMsg('访问密码不正确', 'err');
         var input = $('#bootPwd');
         if (input) { input.select(); input.focus(); }
         return;
       }
-      if (remember) {
-        var raw = await crypto.subtle.exportKey('raw', key);
-        writeStore(bufToB64(raw));
-      }
-      await start(app);
+      if (remember) writeStore(bufToB64(ck));
+      await start(await decryptPayload(ck, bin));
     } catch (err) {
       setBusy(false);
       setMsg((err && err.message) || '加载失败，请检查网络后重试', 'err');
     }
   }
 
+  /* ------------------------------ 重设密码 ------------------------------ */
+
+  function downloadBin(bin) {
+    var blob = new Blob([JSON.stringify(bin)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'app.bin';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  }
+
+  async function doReset() {
+    var oldPwd = ($('#rsOld') || {}).value || '';
+    var newPwd = ($('#rsNew') || {}).value || '';
+    var again = ($('#rsNew2') || {}).value || '';
+    if (!oldPwd) { setMsg('请输入当前访问密码', 'err'); return; }
+    if (newPwd.length < MIN_RESET_LEN) { setMsg('新密码至少 ' + MIN_RESET_LEN + ' 位', 'err'); return; }
+    if (newPwd !== again) { setMsg('两次输入的新密码不一致', 'err'); return; }
+
+    var btn = $('#rsGo');
+    if (btn) { btn.disabled = true; btn.textContent = '生成中…'; }
+    setMsg('正在验证当前密码…');
+    try {
+      var bin = await loadBin();
+      var ck = await findKey(oldPwd, bin);
+      if (!ck) {
+        setMsg('当前密码不正确', 'err');
+        return;
+      }
+      setMsg('正在生成新的加密包…');
+      var env = await sealEnvelope(newPwd, ck, bin.iter || 210000);
+      var next = {};
+      for (var k in bin) { if (Object.prototype.hasOwnProperty.call(bin, k)) next[k] = bin[k]; }
+      next.v = 2;
+      next.env = [env];
+      next.rotatedAt = new Date().toISOString();
+
+      // 本机立刻改用新密码：写一份本地封套，并清掉旧的免密缓存
+      writeLocalEnv(env);
+      clearStore();
+      downloadBin(next);
+
+      setMsg('新密码已在这台设备生效。要让所有设备都换，把下载的 app.bin 替换到仓库后推送。', 'ok');
+      setTimeout(function () {
+        var form = $('#bootResetForm');
+        if (form) form.hidden = true;
+        var f = $('#bootForm');
+        if (f) f.hidden = false;
+        var lk = $('#bootReset');
+        if (lk) lk.hidden = false;
+        var p = $('#bootPwd');
+        if (p) { p.value = ''; p.focus(); }
+      }, 3200);
+    } catch (err) {
+      setMsg((err && err.message) || '重设失败，请重试', 'err');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '生成新的加密包'; }
+    }
+  }
+
+  function bindReset() {
+    var link = $('#bootReset');
+    var form = $('#bootResetForm');
+    if (!link || !form) return;
+    link.addEventListener('click', function () {
+      var f = $('#bootForm');
+      if (f) f.hidden = true;
+      link.hidden = true;
+      form.hidden = false;
+      setMsg('');
+      var first = $('#rsOld');
+      if (first) first.focus();
+    });
+    var back = $('#rsBack');
+    if (back) back.addEventListener('click', function () {
+      form.hidden = true;
+      link.hidden = false;
+      var f = $('#bootForm');
+      if (f) f.hidden = false;
+      setMsg('');
+      var first = $('#bootPwd');
+      if (first) first.focus();
+    });
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      doReset();
+    });
+  }
+
+  /* ------------------------------ 入口 ------------------------------ */
+
   async function boot() {
-    lockEl = $('#bootScreen');
     if (!window.crypto || !crypto.subtle) {
       showFatal('当前环境不支持 Web Crypto，请通过 https 访问本站。');
       return;
@@ -196,13 +355,12 @@
 
     var saved = readStore();
     if (saved) {
-      // 记住过设备：直接用本机密钥解密，无需输入
+      // 记住过设备：直接用本机内容密钥解密，无需输入
       setBusy(true);
       setMsg('正在解锁…');
       try {
         var bin = await loadBin();
-        var key = await importRawKey(saved.k);
-        var app = await openWith(key, bin);
+        var app = await decryptPayload(b64ToBuf(saved.k), bin);
         await start(app);
         return;
       } catch (e) {
@@ -222,6 +380,7 @@
         tryUnlock(val, !!($('#bootRemember') || {}).checked);
       });
     }
+    bindReset();
     var pwd = $('#bootPwd');
     if (pwd) setTimeout(function () { pwd.focus(); }, 120);
   }
