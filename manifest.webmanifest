@@ -1,7 +1,7 @@
 {
-  "name": "墨记 · InkNote",
-  "short_name": "墨记",
-  "description": "优雅、离线可用、可多端同步的加密便签应用。",
+  "name": "拾光 · 日常记录",
+  "short_name": "拾光",
+  "description": "一个上锁的日常记录本：天气、食物、路上看见的东西。",
   "lang": "zh-CN",
   "dir": "ltr",
   "start_url": "./index.html",
@@ -9,9 +9,9 @@
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
-  "background_color": "#f6f5f1",
-  "theme_color": "#f6f5f1",
-  "categories": ["productivity", "utilities"],
+  "background_color": "#fbf9f6",
+  "theme_color": "#fbf9f6",
+  "categories": ["lifestyle", "news"],
   "icons": [
     { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
@@ -19,9 +19,9 @@
   ],
   "shortcuts": [
     {
-      "name": "新建便签",
-      "short_name": "新建",
-      "url": "./index.html?action=new",
+      "name": "写一篇",
+      "short_name": "写",
+      "url": "./write.html",
       "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
     }
   ]

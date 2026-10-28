@@ -1,0 +1,15 @@
+{
+  "v": 2,
+  "alg": "AES-256-GCM",
+  "kdf": "PBKDF2-SHA256",
+  "iter": 210000,
+  "aad": "shiguang-ck-v1",
+  "env": [
+    {
+      "salt": "M6qO7u2coPgcChQP5bT+1w==",
+      "iv": "jeSWKENrcusZFITC",
+      "ct": "DKteEbd9tIPxug3AIffqEw1wyTNYR7Ma7/SggCPSH9zAqVPZD/q1c6qLK4JxTQy2"
+    }
+  ],
+  "createdAt": "2026-10-28T09:20:49.047Z"
+}

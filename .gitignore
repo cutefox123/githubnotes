@@ -1,14 +1,16 @@
-# 可读源码只保留在本机，不进仓库（仓库里只有加密后的 assets/app.bin）
-src/
-
-# 构建依赖与临时文件
+# 依赖与临时文件
 node_modules/
-.tmpcheck/
 .DS_Store
 Thumbs.db
 
-# 项目内部数据
-.workbuddy/
+# 生成示例内容的原料（明文文章、原图、内容密钥）——绝不进仓库
+.seed/
+
+# 旧版便签源码，留在本机备查
+.legacy/
+
+# 测试产物
+.tmpcheck/
 
 # 项目内部数据
 .workbuddy/

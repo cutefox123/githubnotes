@@ -1,157 +1,125 @@
-# 墨记 · InkNote
+# 拾光 · DAILY GLEANINGS
 
-一个纯前端的加密便签应用。部署在 GitHub Pages 上，可当网页用，也可以「添加到主屏幕」当安卓 App 用。
-没有服务器、没有账号、没有统计 —— 所有数据只存在你自己的设备里。
+一个上锁的日常记录博客。纯静态，跑在 GitHub Pages 上，没有后端、没有数据库、不装统计脚本。
 
-这个仓库里**没有可读的源码**：程序被打包压缩后，用访问密码派生的密钥加密成 `assets/app.bin`，
-打开仓库只能看到密文。站点也需要输入访问密码才能进入。
+写的是很小的事：早上煮的粥、下雨天的公交站、旧书店里翻到的一本旧书。文章和照片都存在这个公开仓库里，
+但全都是加密后的密文 —— 没有访问密码，谁也读不出一句话。
 
----
-
-## 三层保护分别保护什么
-
-| 层 | 挡的是谁 | 机制 |
-| --- | --- | --- |
-| 站点访问锁 | 拿到网址的陌生人 | 程序用随机内容密钥加密成 `assets/app.bin`，访问密码只负责解锁这把密钥；密码不对，程序无法运行。密码不写入仓库 |
-| 私密便签 | 借用你设备的人 | 正文与标签用 AES-256-GCM 加密后才落盘，独立密码，支持自动锁定 |
-| 同步加密 | 包括 GitHub 在内 | 整个数据集封成加密信封再上传到你的私有 Gist，端到端加密 |
-
-> 便签数据**从来不会进入这个仓库**。仓库里只有程序本身；你的便签存在本机 IndexedDB 和你自己的私有 Gist 里。
->
-> 说明：纯前端的访问锁挡不住会改 JavaScript 的人（他可以让程序跳过解密）。它的作用是「不让随手点进来的人看到内容」。真正的机密性来自后两层。
+```
+https://cutefox123.github.io/githubnotes/
+```
 
 ---
 
-## 功能
+## 它是怎么工作的
 
-**书写**
-- Markdown 实时预览，工具栏覆盖标题、加粗、斜体、删除线、代码、列表、待办、引用、分隔线、链接、图片
-- 首行自动作为标题；预览里可直接勾选待办，状态写回正文
-- 自动保存（停止输入约 0.5 秒）、字数统计、三种编辑字体、字号行高可调
+```
+访问密码 ──PBKDF2-SHA256(21万次)──> KEK ──解开──> CK（随机内容密钥，32 字节）
+                                                    │
+                    ┌───────────────────────────────┼──────────────────────────┐
+                    ▼                               ▼                          ▼
+            posts/index.json              posts/<id>.json              media/<id>-t.bin
+            （文章目录，密文）              （正文，密文）                （封面，密文二进制）
+```
 
-**组织**
-- 标签（正文 `#标签` 自动收纳）、文件夹、置顶、归档、回收站、便签底色
-- 全文搜索并高亮命中、多种排序
+- 密码只用来「包裹」内容密钥，改密码只需要重新包一次，不用重新加密所有文章。
+- 内容密钥（CK）在你解锁后存在浏览器本地，勾了「记住 30 天」就不用每次都输。
+- 所有加解密在浏览器里完成（WebCrypto），密码和密钥都不会上传到任何地方。
+- 仓库里公开的是**站点骨架**（HTML/CSS/JS），没有密钥的人只能看到一个锁屏。
 
-**隐私**
-- 私密便签 AES-256-GCM 加密，PBKDF2-SHA256（21 万次迭代）派生密钥，密码本身不存储
-- 自动锁定 1/5/15/30 分钟、立即锁定、修改密码
-- 站点访问锁：清除本机记住的密钥即刻失效并刷新
-
-**同步**
-- 通过你自己的私有 GitHub Gist，端到端加密
-- 按 `updatedAt` 增量合并，两端都改过时自动生成冲突副本，不丢内容
-
-**容灾**
-- JSON 备份（可再加一层密码）、Markdown 导出、导入支持 JSON/加密备份/Markdown
-- 每日自动快照 + 手动快照可回滚、单条便签历史版本、回收站、备份到期提醒
-
-**离线**
-- Service Worker 缓存密文，断网也能解密并书写
+> 需要说明的边界：这不是军事级保密，只是让「路过看到仓库的人」读不到内容。
+> 如果密码太弱，理论上可以被离线暴力破解（PBKDF2 只是拖慢速度）。
 
 ---
 
-## 部署到 GitHub Pages
+## 怎么写一篇新文章
 
-1. 新建仓库（例如 `githubnotes`），**公开**（免费版 Pages 要求公开）
-2. 把本目录推上去（`main` 分支根目录）
-3. 仓库 **Settings → Pages**，Source 选 **Deploy from a branch**，Branch 选 `main`、目录 `/ (root)`
-4. 访问 `https://<用户名>.github.io/<仓库名>/`，输入访问密码即可
+打开站点的「写点东西」，第一次会让你连一次 GitHub：
 
-所有路径都是相对的，放在子路径下也能正常工作。
+1. 打开 [GitHub 令牌页面](https://github.com/settings/personal-access-tokens/new)
+2. Token name 随便填，例如 `拾光写作`
+3. Repository access → `Only select repositories` → 勾选 `githubnotes`
+4. Permissions → Repository permissions → **Contents: Read and write**
+5. 生成后复制 `github_pat_...`，粘贴到站点里点「连接」
+
+之后每次：写标题 → 选日期/天气/心情 → 贴一张封面 → 写正文（支持 Markdown）→ 点「发布」。
+正文和封面会在本机加密后提交，大约 30 秒后 GitHub Pages 刷新完，页面会自动跳过去。
+
+令牌只存在这台设备的浏览器里，换设备要重新连一次。写作页右下角可以随时断开。
+
+### 在文章里写 Markdown
+
+支持标题、列表、引用、链接、图片、代码块、表格，以及 `**粗体**`、`*斜体*`、`==高亮==`。
+正文里插入的图片如果是外链，不会走加密，注意别放私密照片。
 
 ---
 
-## 修改访问密码
+## 目录结构
 
-### 方式一：在站点里改（不用命令行）
+```
+index.html                 首页：锁屏 + 封面故事 + 卡片流
+post.html?id=<id>          单篇文章
+write.html                 写作与编辑（需 GitHub 令牌）
+about.html                 关于页（内容是公开的）
 
-锁屏页底部点 **重设访问密码** → 输入当前密码 → 输入两次新密码 → 提交。
+assets/lock.json           密码包裹的内容密钥（唯一需要保密的加密文件）
+assets/css/blog.css        样式
+assets/js/crypto.js        PBKDF2 / AES-GCM 封装
+assets/js/vault.js         解锁、会话、加解密内容
+assets/js/data.js          取密文 → 解密 → 缓存
+assets/js/api.js           GitHub Contents API
+assets/js/md.js            轻量 Markdown 渲染
+assets/js/site.js          主题、锁屏、日期、提示
+assets/js/{home,post,write}.js
 
-- 会把 CK 用新密码重新包一份，并**在这台设备立即生效**
-- 同时下载一个新的 `app.bin`，用它替换仓库里的 `assets/app.bin` 并推送，**所有设备**才都改用新密码
-- 没推送之前，旧密码在别的设备上仍然有效
+posts/index.json           加密的文章目录
+posts/<id>.json            加密的正文
+media/<id>-t.bin           加密的缩略封面（列表用）
+media/<id>-f.bin           加密的大封面（文章页用）
 
-### 方式二：命令行重新构建
+sw.js                      Service Worker（离线可读已看过的文章）
+tools/init-vault.mjs       生成新的内容密钥与 lock.json
+tools/seed.mjs             把本地明文稿件压缩、加密、写出
+tools/gen-icons.mjs        生成站点图标
+```
 
-可读源码在**本机** `src/` 目录（已被 `.gitignore` 排除，不在仓库里）。改完代码后：
+---
+
+## 本地改样式 / 调试
 
 ```bash
-npm install                                      # 首次需要，安装 esbuild
-node tools/build.mjs --password 新的访问密码        # 重新生成 assets/app.bin
-node tools/build.mjs --password 主密码 --alt 旧密码  # 同时保留一个旧密码
-git add assets/app.bin && git commit -m "更新" && git push
+python -m http.server 8088 --bind 127.0.0.1
+# 打开 http://127.0.0.1:8088
 ```
 
-- 换密码后，所有设备下次打开都要重新输入新密码（旧的记住状态会自动失效）
-- 推送后 Service Worker 会提示「新版本已就绪」，点刷新即可
-- **请自己另外备份一份 `src/`**：仓库里只有密文，源码丢了就只能重新写
+`localhost` 属于安全上下文，WebCrypto 可用；直接双击 `index.html`（`file://`）不行。
 
-### 密钥结构（为什么不重新加密整个包）
+### 重新生成密钥（会丢弃现有密码）
 
-`assets/app.bin` 里有一把随机的内容密钥 **CK**，用它加密整个应用包；每个访问密码只负责用
-PBKDF2-SHA256（21 万次）派生的密钥，把 CK **包一层**存进 `env` 数组。
-
-所以：多个密码可以同时有效（`--alt` 就是干这个的），换密码也只是重新包一层 32 字节的 CK，
-不必重新加密 155 KB 的应用包 —— 在浏览器里点几下就能完成。
-
-> 全部密码都忘记时：用 `--password` 重新构建一个记得住的密码并推送即可。便签数据不受影响（它和访问密码无关）。
-
----
-
-## 从手机安装
-
-- 安卓 Chrome：打开站点 → 菜单 → **添加到主屏幕**（全屏运行、独立图标）
-- iPhone Safari：分享 → **添加到主屏幕**
-
----
-
-## 配置同步（可选）
-
-1. GitHub → **Settings → Developer settings → Personal access tokens → Tokens (classic)**
-2. 生成 Token，**只勾选 `gist`**，其他全部不勾
-3. 应用内 **设置 → 同步**，填 Token 与同步密码（≥6 位），Gist ID 留空
-4. 点「立即同步」，首次会创建私有 Gist，记下 Gist ID
-5. 其他设备填**同一个 Gist ID + 相同同步密码**即可
-
-Token 与同步密码只存在本机 IndexedDB，不会上传。
-
----
-
-## 快捷键
-
-| 操作 | 快捷键 |
-| --- | --- |
-| 快速搜索 | `/` |
-| 新建便签 | `Alt + N` |
-| 立即保存 | `Ctrl / ⌘ + S` |
-| 切换预览 | `Ctrl / ⌘ + P` |
-| 关闭弹层 | `Esc` |
-
----
-
-## 仓库内容
-
-```
-.
-├── index.html                 # 单页骨架 + 锁屏界面 + 图标 sprite
-├── manifest.webmanifest       # PWA 清单
-├── sw.js                      # Service Worker（网络优先 + 离线回落）
-├── assets/
-│   ├── app.bin                # 加密后的程序（JS + CSS），不含明文
-│   └── js/loader.js           # 启动器：取密文、解密、注入样式并运行
-├── icons/                     # 应用图标（普通 + maskable）
-├── tools/
-│   ├── build.mjs              # 打包压缩并加密，输出 assets/app.bin
-│   └── gen-icons.mjs          # 图标生成脚本
-└── package.json
+```bash
+node tools/init-vault.mjs 新密码
 ```
 
-`src/`（可读源码）只存在于本机，出于「仓库内容不可直接阅读」的考虑没有提交。
+这只会换掉 `assets/lock.json` 里的密码包裹层，**内容密钥不变**，所以旧文章还能读。
+如果要彻底换内容密钥，得同时重新加密所有文章（`tools/seed.mjs` 会重写示例内容）。
 
-## 浏览器支持
+### 重新生成示例文章
 
-Chrome / Edge 90+、Safari 15+、Firefox 90+。加密依赖 Web Crypto，需要 `https` 或 `localhost`。
+```bash
+node tools/seed.mjs
+```
+
+读取 `.seed/posts/*.json` 的明文和 `.seed/img/*.png` 的原图，压缩后加密写入 `posts/` 与 `media/`。
+`.seed/` 已在 `.gitignore` 里，明文稿件和内容密钥都不会进仓库。
+
+---
+
+## 备份
+
+- 文章与封面都在仓库里，克隆一份就是完整备份（没有密码读不了，但有密码就能恢复）。
+- 密码丢了就真的打不开了。请自己另外记一份，不要只存在脑子里。
+
+---
 
 ## 许可
 

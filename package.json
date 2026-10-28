@@ -1,13 +1,16 @@
 {
-  "name": "inknote",
-  "version": "1.0.3",
+  "name": "shiguang-blog",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
+  "description": "拾光 —— 一个上锁的日常记录博客，纯静态运行在 GitHub Pages 上。",
   "scripts": {
-    "build": "node tools/build.mjs",
-    "icons": "node tools/gen-icons.mjs"
+    "serve": "python -m http.server 8088 --bind 127.0.0.1",
+    "icons": "node tools/gen-icons.mjs",
+    "seed": "node tools/seed.mjs",
+    "vault": "node tools/init-vault.mjs"
   },
   "devDependencies": {
-    "esbuild": "^0.28.2"
+    "sharp": "^0.35.5"
   }
 }

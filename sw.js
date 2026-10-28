@@ -1,16 +1,29 @@
-/* 墨记 InkNote — Service Worker
-   页面与脚本走「网络优先」，保证更新能立刻生效；图标等静态资源「缓存优先」。
-   离线时一律回落到缓存，所以断网依然可以书写。 */
+/* 拾光 · Service Worker
+   壳（页面、样式、脚本）走网络优先，保证更新立刻生效；
+   文章与封面的密文也走网络优先，但缓存键去掉时间戳参数，离线时仍能翻旧文章。 */
 
-const VERSION = 'inknote-v1.0.5';
-const CACHE = 'inknote-shell-' + VERSION;
+const VERSION = 'shiguang-v1.0.0';
+const CACHE = 'shiguang-' + VERSION;
 
 const SHELL = [
   './',
   './index.html',
+  './post.html',
+  './write.html',
+  './about.html',
   './manifest.webmanifest',
-  './assets/app.bin',
-  './assets/js/loader.js',
+  './assets/css/blog.css',
+  './assets/js/config.js',
+  './assets/js/crypto.js',
+  './assets/js/vault.js',
+  './assets/js/data.js',
+  './assets/js/md.js',
+  './assets/js/site.js',
+  './assets/js/home.js',
+  './assets/js/post.js',
+  './assets/js/write.js',
+  './assets/js/api.js',
+  './assets/lock.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png'
@@ -18,7 +31,9 @@ const SHELL = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting())
+    caches.open(CACHE)
+      .then((cache) => cache.addAll(SHELL).catch(() => {}))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -34,28 +49,32 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
-async function networkFirst(req, cacheKey) {
+function keyOf(url) {
+  return url.origin + url.pathname;
+}
+
+async function networkFirst(req, key) {
   const cache = await caches.open(CACHE);
   try {
     const res = await fetch(req, { cache: 'no-store' });
-    if (res && res.status === 200 && res.type === 'basic') cache.put(cacheKey || req, res.clone());
+    if (res && res.status === 200 && res.type === 'basic') cache.put(key || req, res.clone());
     return res;
   } catch {
-    const cached = await cache.match(cacheKey || req);
+    const cached = await cache.match(key || req);
     if (cached) return cached;
     if (req.mode === 'navigate') {
-      return (await cache.match('./index.html')) || (await cache.match('./'));
+      return (await cache.match('./index.html')) || new Response('离线中', { status: 504 });
     }
-    return new Response('', { status: 504, statusText: '离线' });
+    return new Response('', { status: 504, statusText: 'offline' });
   }
 }
 
-async function cacheFirst(req) {
+async function cacheFirst(req, key) {
   const cache = await caches.open(CACHE);
-  const cached = await cache.match(req);
+  const cached = await cache.match(key || req);
   if (cached) return cached;
   const res = await fetch(req);
-  if (res && res.status === 200 && res.type === 'basic') cache.put(req, res.clone());
+  if (res && res.status === 200 && res.type === 'basic') cache.put(key || req, res.clone());
   return res;
 }
 
@@ -64,17 +83,23 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
-  if (url.origin !== location.origin) return; // GitHub API 等外部请求交给网络
+  if (url.origin !== location.origin) return; // GitHub API 之类交给网络
+
+  // 密文内容：忽略 ?t= 之类的缓存穿透参数
+  if (/\/(posts|media)\//.test(url.pathname)) {
+    event.respondWith(networkFirst(req, keyOf(url)));
+    return;
+  }
 
   if (req.mode === 'navigate') {
-    event.respondWith(networkFirst(req, './index.html'));
+    event.respondWith(networkFirst(req, keyOf(url)));
     return;
   }
 
-  if (/\.(?:js|css|bin|webmanifest)$/.test(url.pathname)) {
-    event.respondWith(networkFirst(req));
+  if (/\.(?:js|css|json|webmanifest)$/.test(url.pathname)) {
+    event.respondWith(networkFirst(req, keyOf(url)));
     return;
   }
 
-  event.respondWith(cacheFirst(req).catch(() => new Response('', { status: 504 })));
+  event.respondWith(cacheFirst(req, keyOf(url)).catch(() => new Response('', { status: 504 })));
 });
