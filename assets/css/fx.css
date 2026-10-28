@@ -583,3 +583,138 @@ main,
   body { background: #fff; }
   .book { box-shadow: none; }
 }
+
+/* --------------------------------------------------------------------------
+   8. 细节打磨
+   -------------------------------------------------------------------------- */
+
+/* 标题在窄屏折行时更匀称 */
+.book-title,
+.about-title,
+.entry-title,
+.lock-title { text-wrap: balance; }
+
+/* 日记流末尾的小落款，填掉大片空白 */
+.stream::after {
+  content: "—— 明天继续 ——";
+  display: block;
+  text-align: center;
+  padding: 34px 0 8px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .34em;
+  text-indent: .34em;
+  color: color-mix(in srgb, var(--accent) 46%, var(--ink-4));
+}
+
+/* 日历里「写过」的日子：从灰按钮改成蜜色软块，一眼分清今天 */
+.cal-cell.has:not(.is-today) {
+  background: color-mix(in srgb, var(--accent-soft) 85%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.cal-cell.has:not(.is-today):hover {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+[data-theme="dark"] .cal-cell.has:not(.is-today) {
+  background: color-mix(in srgb, var(--accent-soft) 60%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* 右栏卡片标题：一枚小小的蜜色竖标 */
+.card-title,
+.side-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-start;
+}
+.card-title em { margin-left: auto; }
+.card-title::before,
+.side-card h3::before {
+  content: "";
+  width: 3px;
+  height: 13px;
+  border-radius: 2px;
+  flex: none;
+  background: linear-gradient(180deg, var(--accent-2), var(--accent-deep));
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+/* 标题下划线动画保留，但起点让开竖标 */
+.card-title::after { left: 11px; width: calc(100% - 11px); }
+
+/* 顶部统计：连续那一格带一条蜜色顶线 */
+.stat { position: relative; overflow: hidden; }
+.stat.is-accent::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 18%;
+  right: 18%;
+  height: 2px;
+  border-radius: 0 0 3px 3px;
+  background: linear-gradient(90deg, transparent, var(--accent-2), var(--accent), transparent);
+}
+
+/* 顶栏：当前页签的字用蜜色，和纸面呼应 */
+.tab.is-active { color: var(--accent-deep); }
+.tab.is-active svg { color: var(--accent-deep); }
+
+/* 页脚：分隔点 + 链接下划线滑入 */
+.footer-inner { position: relative; }
+.footer-links a {
+  position: relative;
+  padding-bottom: 2px;
+}
+.footer-links a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 1px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform .28s var(--ease);
+}
+.footer-links a:hover::after { transform: scaleX(1); }
+
+/* 品牌图标：悬浮时轻轻立起来 */
+@media (hover: hover) {
+  .brand:hover .brand-icon { transform: translateY(-1px) rotate(-3deg); }
+  .brand-icon { transition: transform .3s var(--spring); }
+}
+
+/* 阅读进度条圆一点、亮一点 */
+.scroll-progress {
+  height: 3px;
+  border-radius: 0 3px 3px 0;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+/* 关于页：小标题与键值表的收尾 */
+.about-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.about-card h3::before {
+  content: "";
+  width: 3px;
+  height: 13px;
+  border-radius: 2px;
+  flex: none;
+  background: linear-gradient(180deg, var(--accent-2), var(--accent-deep));
+}
+.kv-table > div:last-child { border-bottom: 0; }
+
+/* 空状态：一行字加一点呼吸 */
+.empty { animation: emptyIn .5s var(--ease) both; }
+@keyframes emptyIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (max-width: 720px) {
+  .stream::after { padding: 24px 0 4px; }
+}
