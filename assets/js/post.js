@@ -1,7 +1,7 @@
 /* 单篇文章页 */
 
-import { gate, applyTheme, bindThemeToggles, bindLockButton, toast, $, fmtDateLong, monthEn, parseDate } from './site.js';
-import { loadPost, loadIndex, loadImage } from './data.js';
+import { gate, applyTheme, bindThemeToggles, bindLockButton, toast, $, fmtDateLong, parseDate } from './site.js';
+import { loadPost, loadIndex, loadImage, readingTime } from './data.js';
 import { renderMarkdown } from './md.js';
 import { SITE } from './config.js';
 
@@ -55,8 +55,7 @@ function escapeHtml(s) {
 async function render(post, index) {
   document.title = (post.title || '无题') + ' · ' + SITE.title;
 
-  const d = parseDate(post.date);
-  $('#postKicker').textContent = monthEn(post.date) + ' ' + d.getDate() + ', ' + d.getFullYear();
+  $('#postKicker').textContent = SITE.title + ' / 日常记录';
   $('#postTitle').textContent = post.title || '无题';
 
   const meta = [];
@@ -64,6 +63,7 @@ async function render(post, index) {
   if (post.weather) meta.push('<i class="dot"></i><span>' + escapeHtml(post.weather) + '</span>');
   if (post.place) meta.push('<i class="dot"></i><span>' + escapeHtml(post.place) + '</span>');
   if (post.mood) meta.push('<span class="pill">' + escapeHtml(post.mood) + '</span>');
+  meta.push('<i class="dot"></i><span>' + readingTime(post.body) + ' 分钟</span>');
   $('#postMeta').innerHTML = meta.join('');
 
   const bodyEl = $('#postBody');
@@ -105,7 +105,7 @@ async function render(post, index) {
     const link = (p, dir, label) => p ? (
       `<a class="${dir}" href="./post.html?id=${encodeURIComponent(p.id)}">` +
       `<span>${label}</span><strong>${escapeHtml(p.title || '无题')}</strong></a>`
-    ) : '<span></span>';
+    ) : '';
     nav.innerHTML = [
       link(older, 'prev', '← 更早'),
       link(newer, 'next', '更晚 →')

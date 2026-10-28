@@ -22,7 +22,7 @@ export function applyTheme(t) {
   const theme = t || currentTheme();
   document.documentElement.setAttribute('data-theme', theme);
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', theme === 'dark' ? '#0f0f0e' : '#fbf9f6');
+  if (meta) meta.setAttribute('content', theme === 'dark' ? '#0a0c0f' : '#ffffff');
   $$('[data-theme-toggle]').forEach((btn) => {
     btn.setAttribute('aria-label', theme === 'dark' ? '切换到浅色' : '切换到深色');
     btn.classList.toggle('is-dark', theme === 'dark');

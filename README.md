@@ -57,7 +57,7 @@ https://cutefox123.github.io/githubnotes/
 ## 目录结构
 
 ```
-index.html                 首页：锁屏 + 封面故事 + 卡片流
+index.html                 首页：锁屏 + 文章流 + 右栏（标签 / 统计 / 说明）
 post.html?id=<id>          单篇文章
 write.html                 写作与编辑（需 GitHub 令牌）
 about.html                 关于页（内容是公开的）
