@@ -73,6 +73,12 @@ body {
 
 body.is-locked { overflow: hidden; }
 
+/* 解锁前不露出任何界面，避免骨架屏闪一下 */
+html.is-locked { overflow: hidden; }
+html.is-locked body > .site-header,
+html.is-locked body > main,
+html.is-locked body > .site-footer { visibility: hidden; }
+
 ::selection { background: var(--accent-soft); color: var(--ink); }
 
 a { color: inherit; text-decoration: none; }
@@ -375,6 +381,19 @@ img { display: block; max-width: 100%; }
 .row:hover .row-thumb img.is-loaded { transform: scale(1.04); }
 
 .row:hover .row-thumb { border-color: var(--line-2); }
+
+.row-thumb.is-empty::after {
+  content: "无封面";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: .1em;
+  color: var(--ink-3);
+  background: repeating-linear-gradient(135deg, transparent 0 10px, color-mix(in srgb, var(--ink-4) 12%, transparent) 10px 11px);
+}
 
 .row-thumb.no-img {
   background:

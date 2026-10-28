@@ -80,7 +80,7 @@ function rowEl(p, isLatest) {
   const foot = (badge + tags) ? `<div class="row-foot">${badge}${tags}</div>` : '';
 
   a.innerHTML = `
-    <div class="row-thumb">
+    <div class="row-thumb${p.cover ? '' : ' is-empty'}">
       ${p.cover ? `<img data-src="${p.cover}" alt="${escapeAttr(p.title)}" loading="lazy">` : ''}
     </div>
     <div class="row-main">
